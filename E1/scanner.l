@@ -1,5 +1,7 @@
+%option yylineno
 %{
 
+  #include "tokens.h"
   // Para compilar o analizador
   // $ flex scanner.l
   // vai gerar o arquivos lex.yy.c
@@ -9,10 +11,11 @@
   // $ ./analizador
 
   int get_line_number (void) {
-  	return 1; // TODO
+	  return yylineno; // TODO
   }
 %}
-
 %%
 
+"bool" { return TK_PR_BOOL; }; 
 
+\n { }
