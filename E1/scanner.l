@@ -2,13 +2,13 @@
 %{
 
   #include "tokens.h"
-  // Para compilar o analizador
+  // Para compilar o analisador
   // $ flex scanner.l
   // vai gerar o arquivos lex.yy.c
   // Agora podemos buildar o programa com a nossa main e linkando o lex
-  // $ gcc lex.yy.c main.c -o analizador.out -lfl
+  // $ gcc lex.yy.c main.c -o analisador.out -lfl
   // Agora é só executar e correr pro abraço
-  // $ ./analizador < teste.c
+  // $ ./analisador < teste.c
 
   int get_line_number (void) {
     return yylineno;
@@ -18,6 +18,7 @@
 DIGIT [0-9]
 ID [a-z][a-z0-9_]*
 INT [-|+]?{DIGIT}+
+FLOAT {INT}\.{DIGIT}+([E|e]{INT})?
 
 %%
 
@@ -51,7 +52,30 @@ INT [-|+]?{DIGIT}+
 "default"   { return TK_PR_DEFAULT; }
 
   /* 2. Caracteres Especiais */
-","|";"|":"|"("|")"|"["|"]"|"{"|"}"|"+"|"-"|"|"|"*"|"/"|"<"|">"|"="|"!"|"&"|"%"|"#"|"^"|"."|"$" { return yytext[0]; }
+"," { return yytext[0]; }
+";" { return yytext[0]; }
+":" { return yytext[0]; } 
+"(" { return yytext[0]; } 
+")" { return yytext[0]; } 
+"[" { return yytext[0]; } 
+"]" { return yytext[0]; } 
+"{" { return yytext[0]; }
+"}" { return yytext[0]; }
+"+" { return yytext[0]; }
+"-" { return yytext[0]; }
+"|" { return yytext[0]; }
+"*" { return yytext[0]; }
+"/" { return yytext[0]; }
+"<" { return yytext[0]; }
+">" { return yytext[0]; }
+"=" { return yytext[0]; }
+"!" { return yytext[0]; }
+"&" { return yytext[0]; }
+"%" { return yytext[0]; }
+"#" { return yytext[0]; }
+"^" { return yytext[0]; }
+"." { return yytext[0]; }
+"$" { return yytext[0]; }
 
   /* 3. Operadores Compostos */
 "<=" { return TK_OC_LE; }
@@ -67,10 +91,11 @@ INT [-|+]?{DIGIT}+
 {ID} { return TK_IDENTIFICADOR; }
 
   /* 5. Literais */
-{INT} { return TK_LIT_INT; }
+{INT}   { return TK_LIT_INT; }
+{FLOAT} { return TK_LIT_FLOAT; }
 
   /* Captar caracteres irrelevantes para a linguagem */
-\n|\t|" " { }
+[ \t\n]+ { }
 
   /* Captar erros, se não bateu nenhum token acima */
 . { return TOKEN_ERRO; }
