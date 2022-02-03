@@ -32,4 +32,8 @@ int main() {
   false
   4alow
   4.alow
+  4,alow
+  "4alow"
+  "4.alow"
+  "4,alow"
 }
