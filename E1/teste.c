@@ -30,4 +30,6 @@ int main() {
   'asd'
   true
   false
+  4alow
+  4.alow
 }
