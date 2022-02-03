@@ -89,14 +89,18 @@ STRING ["](.*)?["]
 ">>" { return TK_OC_SL; }
 "<<" { return TK_OC_SR; }
 
+  /* literais bool */
+"false" { return TK_LIT_FALSE; }
+"true"  { return TK_LIT_TRUE; }
+
   /* 4. Identificadores */
 {ID} { return TK_IDENTIFICADOR; }
 
   /* 5. Literais */
-{INT}   { return TK_LIT_INT; }
-{FLOAT} { return TK_LIT_FLOAT; }
+{INT}     { return TK_LIT_INT; }
+{FLOAT}   { return TK_LIT_FLOAT; }
 {STRING}  { return TK_LIT_STRING; }
-{CHAR}  { return TK_LIT_CHAR; }
+{CHAR}    { return TK_LIT_CHAR; }
 
   /* Captar caracteres irrelevantes para a linguagem */
 [ \t\n]+ { }

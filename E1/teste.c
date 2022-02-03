@@ -28,6 +28,6 @@ int main() {
   ' '
   '"'
   'asd'
-  t
-  f
+  true
+  false
 }
