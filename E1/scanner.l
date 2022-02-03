@@ -16,9 +16,11 @@
 %}
 
 DIGIT [0-9]
-ID [a-z][a-z0-9_]*
+ID [a-zA-Z][a-zA-Z0-9_]*
 INT [-|+]?{DIGIT}+
 FLOAT {INT}\.{DIGIT}+([E|e]{INT})?
+CHAR ['](.)[']
+STRING ["](.*)?["]
 
 %%
 
@@ -84,8 +86,8 @@ FLOAT {INT}\.{DIGIT}+([E|e]{INT})?
 "!=" { return TK_OC_NE; }
 "&&" { return TK_OC_AND; }
 "||" { return TK_OC_OR; }
-"<<" { return TK_OC_SL; }
-">>" { return TK_OC_SR; }
+">>" { return TK_OC_SL; }
+"<<" { return TK_OC_SR; }
 
   /* 4. Identificadores */
 {ID} { return TK_IDENTIFICADOR; }
@@ -93,6 +95,8 @@ FLOAT {INT}\.{DIGIT}+([E|e]{INT})?
   /* 5. Literais */
 {INT}   { return TK_LIT_INT; }
 {FLOAT} { return TK_LIT_FLOAT; }
+{STRING}  { return TK_LIT_STRING; }
+{CHAR}  { return TK_LIT_CHAR; }
 
   /* Captar caracteres irrelevantes para a linguagem */
 [ \t\n]+ { }
