@@ -19,8 +19,9 @@ DIGIT [0-9]
 ID [a-zA-Z][a-zA-Z0-9_]*
 INT [-|+]?{DIGIT}+
 FLOAT {INT}\.{DIGIT}+([E|e]{INT})?
-CHAR ['](.)[']
-STRING ["](.*)?["]
+CHAR ['].[']
+STRING ["].*["]
+COMMENT ((\/\/.*)|(\/\*(.|\n|\t)*\*\/))
 
 %%
 
@@ -104,10 +105,11 @@ STRING ["](.*)?["]
 
   /* Captar caracteres irrelevantes para a linguagem */
 [ \t\n]+ { }
+{COMMENT} { }
 
   /* Captar erros, se não bateu nenhum token acima */
-.             { return TOKEN_ERRO; }
-{INT}\.?\,?{ID}  { return TOKEN_ERRO; }
-\'(.)*\'      { return TOKEN_ERRO; }
-\.{INT}       { return TOKEN_ERRO; }
-{INT}\.       { return TOKEN_ERRO; }
+.               { return TOKEN_ERRO; }
+{INT}[.|,]?{ID} { return TOKEN_ERRO; }
+\'(.)*\'        { return TOKEN_ERRO; }
+\.{INT}         { return TOKEN_ERRO; }
+{INT}\.         { return TOKEN_ERRO; }

@@ -36,4 +36,14 @@ int main() {
   "4alow"
   "4.alow"
   "4,alow"
+  True
+  False
+  				fwdvwvmp = 5
+  				
+  // Comentário de uma linha
+  /* comentário 
+     de
+     várias
+     linhas
+  */
 }
