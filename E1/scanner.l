@@ -21,7 +21,7 @@ INT [-|+]?{DIGIT}+
 FLOAT {INT}\.{DIGIT}+([E|e]{INT})?
 CHAR ['].[']
 STRING ["].*["]
-COMMENT ((\/\/.*)|(\/\*(.|\n|\t)*\*\/))
+COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))
 
 %%
 
@@ -109,6 +109,7 @@ COMMENT ((\/\/.*)|(\/\*(.|\n|\t)*\*\/))
 
   /* Captar erros, se não bateu nenhum token acima */
 .               { return TOKEN_ERRO; }
+(\*\/)          { return TOKEN_ERRO; }
 {INT}[.|,]?{ID} { return TOKEN_ERRO; }
 \'(.)*\'        { return TOKEN_ERRO; }
 \.{INT}         { return TOKEN_ERRO; }

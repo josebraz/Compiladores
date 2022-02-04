@@ -43,7 +43,9 @@ int main() {
   // Comentário de uma linha
   /* comentário 
      de
-     várias
+     várias*/ hsivsiv
      linhas
   */
+ 
+ avsvsdvsdv
 }
