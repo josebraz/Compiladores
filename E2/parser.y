@@ -1,7 +1,12 @@
 %{
+#include <stdio.h>
 int yylex(void);
 void yyerror (char const *s);
 %}
+
+%token TK_COMMA 44
+%token TK_SEMI 59
+
 
 %token TK_PR_INT
 %token TK_PR_FLOAT
@@ -49,6 +54,27 @@ void yyerror (char const *s);
 
 %%
 
-programa:
+g_decl: TK_PR_STATIC type decl_list TK_SEMI |
+        type decl_list TK_SEMI;
+
+decl_list: TK_IDENTIFICADOR TK_COMMA decl_list | 
+           TK_IDENTIFICADOR;
+
+lit: TK_LIT_INT |
+     TK_LIT_FLOAT |
+     TK_LIT_FALSE |
+     TK_LIT_TRUE |
+     TK_LIT_CHAR |
+     TK_LIT_STRING;
+
+type: TK_PR_INT | 
+      TK_PR_FLOAT | 
+      TK_PR_BOOL | 
+      TK_PR_CHAR | 
+      TK_PR_STRING;
 
 %%
+
+void yyerror(char const *s) {
+  printf("ERROR: %s\n", s);
+}
