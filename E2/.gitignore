@@ -4,3 +4,5 @@ lex.yy.c
 parser.tab.c
 parser.tab.h
 parser.tab.o
+parser.output
+main.o

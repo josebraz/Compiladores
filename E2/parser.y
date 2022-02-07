@@ -1,12 +1,12 @@
 %{
-#include <stdio.h>
-int yylex(void);
-void yyerror (char const *s);
+  #include <stdio.h>
+  
+  int get_line_number (void);
+  int yylex(void);
+  void yyerror (char const *s);
 %}
 
-%token TK_COMMA 44
-%token TK_SEMI 59
-
+%define parse.error verbose
 
 %token TK_PR_INT
 %token TK_PR_FLOAT
@@ -52,29 +52,87 @@ void yyerror (char const *s);
 %token TK_IDENTIFICADOR
 %token TOKEN_ERRO
 
+%start prog
+
 %%
 
-g_decl: TK_PR_STATIC type decl_list TK_SEMI |
-        type decl_list TK_SEMI;
+prog : 
+    global_decl prog | 
+    function prog | 
+    global_decl | 
+    function;
 
-decl_list: TK_IDENTIFICADOR TK_COMMA decl_list | 
-           TK_IDENTIFICADOR;
+global_decl : 
+    TK_PR_STATIC type global_decl_list ';' |
+    type global_decl_list ';';
 
-lit: TK_LIT_INT |
-     TK_LIT_FLOAT |
-     TK_LIT_FALSE |
-     TK_LIT_TRUE |
-     TK_LIT_CHAR |
-     TK_LIT_STRING;
+global_decl_list : 
+    TK_IDENTIFICADOR ',' global_decl_list | 
+    TK_IDENTIFICADOR '[' TK_LIT_INT ']' ',' global_decl_list | 
+    TK_IDENTIFICADOR |
+    TK_IDENTIFICADOR '[' TK_LIT_INT ']';
+            
+function: 
+    function_header function_body;
 
-type: TK_PR_INT | 
-      TK_PR_FLOAT | 
-      TK_PR_BOOL | 
-      TK_PR_CHAR | 
-      TK_PR_STRING;
+function_header: 
+    type TK_IDENTIFICADOR function_params |
+    TK_PR_STATIC type TK_IDENTIFICADOR function_params;
+          
+function_params: 
+    '(' ')' | 
+    '(' function_params_list ')';
+
+function_params_list: 
+    type TK_IDENTIFICADOR ',' function_params_list |
+    TK_PR_CONST type TK_IDENTIFICADOR ',' function_params_list |
+    type TK_IDENTIFICADOR |
+    TK_PR_CONST type TK_IDENTIFICADOR;  
+
+function_body: statement_block;
+
+statement_block:
+    '{' '}' |
+    '{' statement_list '}';
+    
+statement_list:
+    statement statement_list | 
+    statement;
+
+statement:
+    local_decl; // todo: adicionar os outros comandos
+
+local_decl:
+    TK_PR_STATIC type local_decl_list ';' |
+    TK_PR_CONST type local_decl_list ';' |
+    TK_PR_STATIC TK_PR_CONST type local_decl_list ';' |
+    type local_decl_list ';';
+
+local_decl_list:
+    TK_IDENTIFICADOR ',' local_decl_list | 
+    TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list | 
+    TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list | 
+    TK_IDENTIFICADOR TK_OC_LE literal |
+    TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR |
+    TK_IDENTIFICADOR;
+
+literal: 
+    TK_LIT_INT |
+    TK_LIT_FLOAT |
+    TK_LIT_FALSE |
+    TK_LIT_TRUE |
+    TK_LIT_CHAR |
+    TK_LIT_STRING;
+      
+type: 
+    TK_PR_INT | 
+    TK_PR_FLOAT | 
+    TK_PR_BOOL | 
+    TK_PR_CHAR | 
+    TK_PR_STRING;
 
 %%
 
 void yyerror(char const *s) {
-  printf("ERROR: %s\n", s);
+  printf("ERROR:\n\tline: %d\n\tmessage: %s\n", get_line_number(), s);
 }
