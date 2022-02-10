@@ -110,7 +110,4 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))
   /* Captar erros, se não bateu nenhum token acima */
 .               { return TOKEN_ERRO; }
 (\*\/)          { return TOKEN_ERRO; }
-{INT}[.|,]?{ID} { return TOKEN_ERRO; }
 \'(.)*\'        { return TOKEN_ERRO; }
-\.{INT}         { return TOKEN_ERRO; }
-{INT}\.         { return TOKEN_ERRO; }

@@ -38,6 +38,8 @@ int main() {
   "4,alow"
   True
   False
+  true
+  false
   				fwdvwvmp = 5
   				
   // Comentário de uma linha
