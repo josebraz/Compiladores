@@ -12,5 +12,10 @@ int function_test(string a, int b) {
     int teste;
     string teste2 <= "svsvsdv";
     int a <= 6, b <= 0;
+    
+    function_test(a, b);
+    
+    
 }
+
 

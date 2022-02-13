@@ -96,17 +96,25 @@ statement_block:
     '{' statement_list '}';
     
 statement_list:
-    statement statement_list | 
-    statement;
+    statement ';' statement_list | 
+    statement ';';
 
 statement:
-    local_decl; // todo: adicionar os outros comandos
+    local_decl |
+    assignment |
+    in_out |
+    function_call |
+    shift |
+    TK_PR_RETURN expression |
+    TK_PR_BREAK |
+    TK_PR_CONTINUE |
+    control_flow;
 
 local_decl:
-    TK_PR_STATIC type local_decl_list ';' |
-    TK_PR_CONST type local_decl_list ';' |
-    TK_PR_STATIC TK_PR_CONST type local_decl_list ';' |
-    type local_decl_list ';';
+    TK_PR_STATIC type local_decl_list |
+    TK_PR_CONST type local_decl_list |
+    TK_PR_STATIC TK_PR_CONST type local_decl_list |
+    type local_decl_list;
 
 local_decl_list:
     TK_IDENTIFICADOR ',' local_decl_list | 
@@ -115,6 +123,81 @@ local_decl_list:
     TK_IDENTIFICADOR TK_OC_LE literal |
     TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR |
     TK_IDENTIFICADOR;
+
+assignment:
+    TK_IDENTIFICADOR '=' expression |
+    TK_IDENTIFICADOR '[' expression ']' '=' expression;
+    
+in_out:
+    TK_PR_INPUT TK_IDENTIFICADOR |
+    TK_PR_OUTPUT TK_IDENTIFICADOR |
+    TK_PR_OUTPUT literal;
+
+function_call:
+    TK_IDENTIFICADOR '(' ')' |
+    TK_IDENTIFICADOR '(' function_call_list ')';
+
+function_call_list:
+    expression ',' function_call_list |
+    expression;
+
+shift:
+    TK_IDENTIFICADOR TK_OC_SL TK_LIT_INT |
+    TK_IDENTIFICADOR '[' expression ']' TK_OC_SL TK_LIT_INT |
+    TK_IDENTIFICADOR TK_OC_SR TK_LIT_INT |
+    TK_IDENTIFICADOR '[' expression ']' TK_OC_SR TK_LIT_INT;
+
+control_if:
+    TK_PR_IF '(' expression ')' statement_block |
+    TK_PR_IF '(' expression ')' statement_block TK_PR_ELSE statement_block;
+    
+control_for:
+    TK_PR_FOR '(' assignment ':' expression ':' assignment ')' statement_block;
+    
+control_while:
+    TK_PR_WHILE '(' expression ')' TK_PR_DO statement_block;
+
+control_flow:
+    control_if |
+    control_for |
+    control_while;
+
+expression:
+    logic_expr |
+    arith_expr;
+
+arith_expr:
+    '(' arith_expr ')' |
+    arith_unary_operator arith_expr |
+    arith_expr arith_binary_operator arith_expr |
+    arith_operands;
+    
+arith_unary_operator:
+    '+' | '-' | '&' | '*' | '?' | '#';
+    
+arith_binary_operator:
+    '+' | '-' | '*' | '/' | '%' | '|' | '&' | '^';
+
+arith_operands:
+    TK_IDENTIFICADOR |
+    TK_IDENTIFICADOR '[' TK_LIT_INT ']' |
+    TK_LIT_INT |
+    TK_LIT_FLOAT |
+    function_call;
+
+logic_expr:
+    '(' logic_expr ')' |
+    arith_expr relational_binary_operator arith_expr |
+    logic_expr logic_binary_operator logic_expr |
+    '!' logic_expr | 
+    TK_LIT_FALSE | 
+    TK_LIT_TRUE;
+
+relational_binary_operator:
+    TK_OC_LE | TK_OC_GE | TK_OC_EQ | TK_OC_NE;
+
+logic_binary_operator:
+    TK_OC_AND | TK_OC_OR;
 
 literal: 
     TK_LIT_INT |
