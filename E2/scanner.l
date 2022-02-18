@@ -1,7 +1,14 @@
 %option yylineno
 %{
 
-  #include "parser.tab.h"
+  #include "tokens.h"
+  // Para compilar o analisador
+  // $ flex scanner.l
+  // vai gerar o arquivos lex.yy.c
+  // Agora podemos buildar o programa com a nossa main e linkando o lex
+  // $ gcc lex.yy.c main.c -o analisador.out -lfl
+  // Agora é só executar e correr pro abraço
+  // $ ./analisador < teste.c
 
   int get_line_number (void) {
     return yylineno;
@@ -103,7 +110,4 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))
   /* Captar erros, se não bateu nenhum token acima */
 .               { return TOKEN_ERRO; }
 (\*\/)          { return TOKEN_ERRO; }
-{INT}[.|,]?{ID} { return TOKEN_ERRO; }
 \'(.)*\'        { return TOKEN_ERRO; }
-\.{INT}         { return TOKEN_ERRO; }
-{INT}\.         { return TOKEN_ERRO; }
