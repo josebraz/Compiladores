@@ -1,6 +1,7 @@
 static int global_int1, global_int2, global_int3;
 string global_string;
 float global_float;
+static int glonal_int = 2;
 char global_char;
 bool global_bool;
 
@@ -15,7 +16,7 @@ int function_test(string a, int b) {
     
     function_test(a, b);
     
-    
+    bool var <= 'o';
 }
 
 
