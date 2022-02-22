@@ -1,3 +1,5 @@
+/* autores: José Henrique da Silva Braz & Jeison Casonatti Caroly */
+
 %option yylineno
 %{
 
@@ -16,12 +18,12 @@
 %}
 
 DIGIT [0-9]
-ID [a-zA-Z][a-zA-Z0-9_]*
+ID [a-zA-Z_]+[a-zA-Z0-9_]*
 INT [-|+]?{DIGIT}+
 FLOAT {INT}\.{DIGIT}+([E|e]{INT})?
 CHAR ['].[']
 STRING ["].*["]
-COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))
+COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)
 
 %%
 
@@ -109,5 +111,4 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))
 
   /* Captar erros, se não bateu nenhum token acima */
 .               { return TOKEN_ERRO; }
-(\*\/)          { return TOKEN_ERRO; }
 \'(.)*\'        { return TOKEN_ERRO; }
