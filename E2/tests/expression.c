@@ -7,6 +7,8 @@ int teste() {
     bbbb >> 5555;
     aa[5] << 334;
     b[5] << 22;
+    
+    b = 5*5+6-2%3*444;
    
     break;
     continue;

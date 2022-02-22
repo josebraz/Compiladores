@@ -19,8 +19,8 @@
 
 DIGIT [0-9]
 ID [a-zA-Z_]+[a-zA-Z0-9_]*
-INT [-|+]?{DIGIT}+
-FLOAT {INT}\.{DIGIT}+([E|e]{INT})?
+INT {DIGIT}+
+FLOAT {INT}\.{DIGIT}+([E|e][+|-]?{INT})?
 CHAR ['].[']
 STRING ["].*["]
 COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)

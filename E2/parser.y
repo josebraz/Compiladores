@@ -176,11 +176,7 @@ expression10:
     expression9;
 
 expression9:
-    expression9 '|' expression8 |
-    expression8;
-
-expression8:
-    expression8 '^' expression7 |
+    expression9 '|' expression7 |
     expression7;
 
 expression7:
@@ -208,6 +204,10 @@ expression3:
     expression3 '*' expression2 |
     expression3 '/' expression2 |
     expression3 '%' expression2 |
+    expression8;
+    
+expression8:
+    expression8 '^' expression2 |
     expression2;
     
 expression2:
