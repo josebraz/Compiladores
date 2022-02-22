@@ -7,6 +7,7 @@
 %}
 
 %define parse.error verbose
+%define parse.lac full
 
 %token TK_PR_INT
 %token TK_PR_FLOAT
@@ -95,18 +96,19 @@ statement_block:
     '{' statement_list '}';
     
 statement_list:
-    statement ';' statement_list | 
-    statement ';';
+    statement statement_list | 
+    statement;
 
 statement:
-    local_decl |
-    assignment |
-    in_out |
-    function_call |
-    shift |
-    TK_PR_RETURN expression |
-    TK_PR_BREAK |
-    TK_PR_CONTINUE |
+    statement_block |
+    local_decl ';' |
+    assignment ';' |
+    in_out ';' |
+    function_call ';' |
+    shift ';' |
+    TK_PR_RETURN expression ';' |
+    TK_PR_BREAK ';' |
+    TK_PR_CONTINUE ';' |
     control_flow;
 
 local_decl:
@@ -124,7 +126,7 @@ local_decl_list:
     TK_IDENTIFICADOR;
 
 assignment:
-    TK_IDENTIFICADOR '=' literal |
+    TK_IDENTIFICADOR '=' expression |
     TK_IDENTIFICADOR '[' expression ']' '=' expression;
     
 in_out:
@@ -201,21 +203,21 @@ expression4:
     expression4 '+' expression3 |
     expression4 '-' expression3 |
     expression3;
-
+    
 expression3:
     expression3 '*' expression2 |
     expression3 '/' expression2 |
     expression3 '%' expression2 |
     expression2;
-
+    
 expression2:
-    '+' expression2 |
-    '-' expression2 |
-    '&' expression2 |
-    '*' expression2 |
-    '?' expression2 |
-    '!' expression2 |
-    '#' expression2 |
+    '+' expression1 |
+    '-' expression1 |
+    '&' expression1 |
+    '*' expression1 |
+    '?' expression1 |
+    '!' expression1 |
+    '#' expression1 |
     expression1;
 
 expression1:
@@ -225,6 +227,8 @@ operand:
     TK_IDENTIFICADOR |
     TK_LIT_INT |
     TK_LIT_FLOAT |
+    TK_LIT_FALSE |
+    TK_LIT_TRUE |
     function_call |
     TK_IDENTIFICADOR '[' TK_LIT_INT ']';
 
