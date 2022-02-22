@@ -1,3 +1,4 @@
+// autores: José Henrique da Silva Braz & Jeison Casonatti Caroly
 /*
 Função principal para impressão de tokens.
 

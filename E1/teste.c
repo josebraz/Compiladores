@@ -9,6 +9,7 @@ int main() {
   <<
   int x = 15;
   sdASKd_asD_
+  _testando_
   int
   bool
   bool
@@ -22,6 +23,7 @@ int main() {
   44.
   .50
   44.11E-2
+  44e-2
   'a'
   '1'
   '['
