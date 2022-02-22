@@ -7,7 +7,7 @@ etapa2.o: parser lex main.c
 	gcc -c lex.yy.c parser.tab.c main.c
 
 parser: parser.y
-	bison -d parser.y --report-file=parser.output
+	bison -d parser.y -v 
 
 lex: scanner.l
 	flex scanner.l

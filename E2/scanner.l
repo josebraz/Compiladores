@@ -3,7 +3,7 @@
 %option yylineno
 %{
 
-  #include "tokens.h"
+  #include "parser.tab.h"
   // Para compilar o analisador
   // $ flex scanner.l
   // vai gerar o arquivos lex.yy.c

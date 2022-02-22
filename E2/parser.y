@@ -57,10 +57,9 @@
 %%
 
 prog : 
-    global_decl prog | 
-    function prog | 
-    global_decl | 
-    function;
+    global_decl prog |
+    function prog |
+    ;
 
 global_decl : 
     TK_PR_STATIC type global_decl_list ';' |
@@ -125,7 +124,7 @@ local_decl_list:
     TK_IDENTIFICADOR;
 
 assignment:
-    TK_IDENTIFICADOR '=' expression |
+    TK_IDENTIFICADOR '=' literal |
     TK_IDENTIFICADOR '[' expression ']' '=' expression;
     
 in_out:
@@ -163,41 +162,71 @@ control_flow:
     control_while;
 
 expression:
-    logic_expr |
-    arith_expr;
-
-arith_expr:
-    '(' arith_expr ')' |
-    arith_unary_operator arith_expr |
-    arith_expr arith_binary_operator arith_expr |
-    arith_operands;
+    expression11 '?' expression11 ':' expression11 |
+    expression11;
     
-arith_unary_operator:
-    '+' | '-' | '&' | '*' | '?' | '#';
-    
-arith_binary_operator:
-    '+' | '-' | '*' | '/' | '%' | '|' | '&' | '^';
+expression11:
+    expression11 TK_OC_OR expression10 | 
+    expression10;
 
-arith_operands:
+expression10:
+    expression10 TK_OC_AND expression9 |
+    expression9;
+
+expression9:
+    expression9 '|' expression8 |
+    expression8;
+
+expression8:
+    expression8 '^' expression7 |
+    expression7;
+
+expression7:
+    expression7 '&' expression6 |
+    expression6;
+
+expression6:
+    expression6 TK_OC_EQ expression5 |
+    expression6 TK_OC_NE expression5 |
+    expression5;
+
+expression5:
+    expression5 '<' expression4 |
+    expression5 '>' expression4 |
+    expression5 TK_OC_LE expression4 |
+    expression5 TK_OC_GE expression4 |
+    expression4;
+
+expression4:
+    expression4 '+' expression3 |
+    expression4 '-' expression3 |
+    expression3;
+
+expression3:
+    expression3 '*' expression2 |
+    expression3 '/' expression2 |
+    expression3 '%' expression2 |
+    expression2;
+
+expression2:
+    '+' expression2 |
+    '-' expression2 |
+    '&' expression2 |
+    '*' expression2 |
+    '?' expression2 |
+    '!' expression2 |
+    '#' expression2 |
+    expression1;
+
+expression1:
+    '(' expression ')' | operand;
+    
+operand:
     TK_IDENTIFICADOR |
-    TK_IDENTIFICADOR '[' TK_LIT_INT ']' |
     TK_LIT_INT |
     TK_LIT_FLOAT |
-    function_call;
-
-logic_expr:
-    '(' logic_expr ')' |
-    arith_expr relational_binary_operator arith_expr |
-    logic_expr logic_binary_operator logic_expr |
-    '!' logic_expr | 
-    TK_LIT_FALSE | 
-    TK_LIT_TRUE;
-
-relational_binary_operator:
-    TK_OC_LE | TK_OC_GE | TK_OC_EQ | TK_OC_NE;
-
-logic_binary_operator:
-    TK_OC_AND | TK_OC_OR;
+    function_call |
+    TK_IDENTIFICADOR '[' TK_LIT_INT ']';
 
 literal: 
     TK_LIT_INT |
