@@ -1,4 +1,6 @@
 
+/* autores: José Henrique da Silva Braz & Jeison Casonatti Caroly */
+
 int teste_int;
 bool teste_bool;
 float teste_float;

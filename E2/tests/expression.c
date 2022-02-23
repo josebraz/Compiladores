@@ -1,5 +1,4 @@
-
-
+/* autores: José Henrique da Silva Braz & Jeison Casonatti Caroly */
 
 int teste() {
     
@@ -22,6 +21,14 @@ int teste() {
     while (true) do {
     	bbbb >> 5555;
     }
-
+    
+    for (i = 0: i < 9: i = i + 1) {
+    
+    
+    }
+    a = 5 * *(b + c) + 400;
+    
+    a = 5 + (true ? 67767^4 : 47*200);
+    
     return 9 * 3 + 444 * (ascasc * 2);
 }

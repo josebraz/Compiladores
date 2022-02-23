@@ -81,6 +81,7 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)
 "^" { return yytext[0]; }
 "." { return yytext[0]; }
 "$" { return yytext[0]; }
+"?" { return yytext[0]; }
 
   /* 3. Operadores Compostos */
 "<=" { return TK_OC_LE; }
