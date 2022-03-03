@@ -1,0 +1,10 @@
+etapa3
+lex.yy.o
+lex.yy.c
+parser.tab.c
+parser.tab.h
+parser.tab.o
+parser.output
+util.o
+asp.o
+main.o
