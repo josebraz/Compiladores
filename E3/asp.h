@@ -10,6 +10,8 @@ typedef struct node {
 
 void add_child(node* father, node* child);
 
+int remove_child(node *parent, node *to_remove);
+
 node* create_node(char *label, int nodes, ...);
 
 node* create_node_id_array(char *value, node* index);

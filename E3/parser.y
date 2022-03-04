@@ -74,6 +74,8 @@
 %type<valor_lexico.node> statement
 %type<valor_lexico.node> statement_block
 %type<valor_lexico.node> assignment
+%type<valor_lexico.node> local_decl
+%type<valor_lexico.node> local_decl_list
 
 %type<valor_lexico.node> expression
 %type<valor_lexico.node> expression10
@@ -132,13 +134,19 @@ statement_block:
   | '{' statement_list '}' { $$ = $2; } ;
     
 statement_list:
-    statement statement_list { $$ = $1; add_child($1, $2); } 
+    statement statement_list { 
+        if ($1 != NULL) {
+            $$ = $1; add_child($1, $2);
+        } else {
+            $$ = $2;
+        }
+    } 
   | statement;
 
 statement:
     statement_block
-  | assignment ';';
-//   | local_decl ';'
+  | assignment ';'
+  | local_decl ';';
 //   | in_out ';'
 //   | function_call ';' 
 //   | shift ';'
@@ -150,18 +158,32 @@ statement:
 
 // Declaração de variáveis locais
 local_decl:
-    TK_PR_STATIC type local_decl_list
-  | TK_PR_CONST type local_decl_list
-  | TK_PR_STATIC TK_PR_CONST type local_decl_list
-  | type local_decl_list;
+    TK_PR_STATIC type local_decl_list { $$ = $3; }
+  | TK_PR_CONST type local_decl_list { $$ = $3; }
+  | TK_PR_STATIC TK_PR_CONST type local_decl_list { $$ = $4; }
+  | type local_decl_list { $$ = $2; };
 
 local_decl_list:
-    TK_IDENTIFICADOR ',' local_decl_list 
-  | TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list 
-  | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list 
-  | TK_IDENTIFICADOR TK_OC_LE literal
-  | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR
-  | TK_IDENTIFICADOR;
+    TK_IDENTIFICADOR ',' local_decl_list { $$ = $3; }
+  | TK_IDENTIFICADOR { $$ = NULL; }
+  | TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list { 
+        node *id_node = create_leaf_id($1); 
+        $$ = create_node("<=", 3, id_node, $3, $5); 
+    } 
+  | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list { 
+        node *dest_node = create_leaf_id($1); 
+        node *source_node = create_leaf_id($3); 
+        $$ = create_node("<=", 3, dest_node, source_node, $5); 
+    } 
+  | TK_IDENTIFICADOR TK_OC_LE literal { 
+        node *id_node = create_leaf_id($1); 
+        $$ = create_node("<=", 2, id_node, $3); 
+    } 
+  | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR { 
+        node *dest_node = create_leaf_id($1); 
+        node *source_node = create_leaf_id($3); 
+        $$ = create_node("<=", 2, dest_node, source_node);  
+    } ;
 
 
 // Comando de atribuição (depois de declarar)
@@ -232,7 +254,7 @@ control_while:
 // maior será a precedencia da produção
 // A associatividade é construída com a forma que é feito a recursão
 expression:
-    expression10 '?' expression10 ':' expression10 { $$ = create_node("?:", 2, $1, $3, $5); } 
+    expression10 '?' expression10 ':' expression10 { $$ = create_node("?:", 3, $1, $3, $5); } 
   | expression10;
     
 expression10:
