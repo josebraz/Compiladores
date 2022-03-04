@@ -19,6 +19,7 @@ void add_child(node *father, node *child) {
     }
     
     father->nodes = new_childrens;
+    father->size = size + 1;
 }
 
 node* create_node(char *label, int nodes, ...) {
@@ -37,9 +38,7 @@ node* create_node(char *label, int nodes, ...) {
     }
     
     va_end(arguments);
-    
-    printf("Create node => %s with %d nodes -- %p\n", label, nodes, new_node);
-    
+
     return new_node;
 }
 
@@ -58,9 +57,7 @@ node* create_leaf(void *value, char* label) {
     new_leaf->value = value;
     new_leaf->size = 0;
     new_leaf->nodes = NULL;
-    
-    printf("Create leaf => %s -- %p\n", label, new_leaf);
-    
+
     return new_leaf;
 }
 

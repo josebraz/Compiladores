@@ -8,3 +8,4 @@ parser.output
 util.o
 asp.o
 main.o
+*.png

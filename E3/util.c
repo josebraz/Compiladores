@@ -31,9 +31,35 @@ void print_tree_labels(void *arvore) {
     }
 }
 
+void generate_dot_rec(void *arvore) {
+    int i;
+    node *n = (node *) arvore;
+    
+    if (n == NULL) return;
+    
+    printf("\t%ld [label=\"%s\"]\n", n, n->label);
+    
+    for (i = 0; i < n->size; i++) {
+        if (n->nodes[i] != NULL) {
+            printf("\t%ld -> %ld\n", n, n->nodes[i]);
+        }
+    }
+    for (i = 0; i < n->size; i++) {
+        generate_dot_rec(n->nodes[i]);
+    }
+
+}
+
+void generate_dot(void *arvore) {
+    printf("digraph {\n");
+    generate_dot_rec(arvore);
+    printf("}\n");
+}
+
 void exporta(void *arvore) {
-    print_tree_children(arvore);
-    print_tree_labels(arvore);
+    // print_tree_children(arvore);
+    // print_tree_labels(arvore);
+    generate_dot(arvore);
 }
 
 // TODO: Testar com o valgrind

@@ -85,7 +85,7 @@
 %type<valor_lexico.node> expression4
 %type<valor_lexico.node> expression3
 %type<valor_lexico.node> expression2
-// %type<valor_lexico.node> expression1
+%type<valor_lexico.node> expression1
 %type<valor_lexico.node> expression0
 
 %start s
@@ -275,19 +275,18 @@ expression3:
   | expression2;
     
 expression2:
-    expression2 '^' expression0 { $$ = create_node("^", 2, $1, $3); } 
+    expression2 '^' expression1 { $$ = create_node("^", 2, $1, $3); } 
+  | expression1;
+
+expression1:
+    '+' expression0 { $$ = create_node_unary_ope("+", $2); } 
+  | '-' expression0 { $$ = create_node_unary_ope("-", $2); } 
+  | '?' expression0 { $$ = create_node_unary_ope("?", $2); } 
+  | '!' expression0 { $$ = create_node_unary_ope("!", $2); } 
+  | '&' expression0 { $$ = create_node_unary_ope("&", $2); } 
+  | '*' expression0 { $$ = create_node_unary_ope("*", $2); } 
+  | '#' expression0 { $$ = create_node_unary_ope("#", $2); } 
   | expression0;
-    
-// TODO: criar os tokens e os nodos da árvore
-// expression1:
-//     '+' expression0 { $$ = create_node_unary_ope($1, $2); } 
-//   | '-' expression0
-//   | '?' expression0
-//   | '!' expression0
-//   | '&' expression0
-//   | '*' expression0
-//   | '#' expression0
-//   | expression0;
 
 expression0:
     '(' expression ')' { $$ = $2; }
