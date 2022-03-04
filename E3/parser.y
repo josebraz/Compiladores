@@ -3,9 +3,10 @@
 %{
   #include <stdio.h>
   #include <stdlib.h>
+  #include <string.h>
   
   #include "asp.h"
-  #include "util.h"
+  #include "types.h"
   
   #define YYDEBUG 1
   
@@ -45,15 +46,16 @@
 %token TK_PR_PROTECTED
 %token TK_PR_END
 %token TK_PR_DEFAULT
-%token TK_OC_LE
-%token TK_OC_GE
-%token TK_OC_EQ
-%token TK_OC_NE
-%token TK_OC_AND
-%token TK_OC_OR
-%token TK_OC_SL
-%token TK_OC_SR
 %token TOKEN_ERRO
+
+%token<valor_lexico.string> TK_OC_LE
+%token<valor_lexico.string> TK_OC_GE
+%token<valor_lexico.string> TK_OC_EQ
+%token<valor_lexico.string> TK_OC_NE
+%token<valor_lexico.string> TK_OC_AND
+%token<valor_lexico.string> TK_OC_OR
+%token<valor_lexico.string> TK_OC_SL
+%token<valor_lexico.string> TK_OC_SR
 
 %token<valor_lexico.integer> TK_LIT_INT
 %token<valor_lexico.real> TK_LIT_FLOAT
@@ -63,22 +65,42 @@
 %token<valor_lexico.string> TK_LIT_STRING
 %token<valor_lexico.string> TK_IDENTIFICADOR
 
-// %type<no> s
-// %type<no> type
+%type<valor_lexico.node> operand
+%type<valor_lexico.node> function_call 
+%type<valor_lexico.node> literal 
+%type<valor_lexico.node> prog 
+%type<valor_lexico.node> function_body
+%type<valor_lexico.node> statement_list
+%type<valor_lexico.node> statement
+%type<valor_lexico.node> statement_block
+%type<valor_lexico.node> assignment
 
-%start prog
+%type<valor_lexico.node> expression
+%type<valor_lexico.node> expression10
+%type<valor_lexico.node> expression9
+%type<valor_lexico.node> expression8
+%type<valor_lexico.node> expression7
+%type<valor_lexico.node> expression6
+%type<valor_lexico.node> expression5
+%type<valor_lexico.node> expression4
+%type<valor_lexico.node> expression3
+%type<valor_lexico.node> expression2
+// %type<valor_lexico.node> expression1
+%type<valor_lexico.node> expression0
+
+%start s
 
 %%
 
-// s : prog { arvore = $$; } ;
+s : prog { arvore = $1; } ;
 
 // O programa é um conjunto de declarações globais e
 // declarações de funções, também é aceito uma linguagem vazia 
 prog : 
-    global_decl prog { printf("Global Declaration\n"); }   
-  | function prog { printf("FUNCTION\n"); }       
-  | 
-    ;
+    global_decl prog { $$ = $2; }
+  | type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node($2, 2, $4, $5); }       
+  | TK_PR_STATIC type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node($3, 2, $5, $6); }   
+  | { $$ = NULL; };
 
 // Declaração de variáveis globais
 global_decl : 
@@ -91,15 +113,7 @@ global_decl_list :
   | TK_IDENTIFICADOR
   | TK_IDENTIFICADOR '[' TK_LIT_INT ']';
 
-
-// Declaração das funções            
-function: 
-    function_header function_body;
-
-function_header: 
-    type TK_IDENTIFICADOR function_params
-  | TK_PR_STATIC type TK_IDENTIFICADOR function_params;
-          
+// Declaração das funções        
 function_params: 
     '(' ')'
   | '(' function_params_list ')';
@@ -114,24 +128,24 @@ function_body: statement_block;
 
 // Lista de comandos da linguagem
 statement_block:
-    '{' '}'
-  | '{' statement_list '}';
+    '{' '}' { $$ = NULL; }
+  | '{' statement_list '}' { $$ = $2; } ;
     
 statement_list:
-    statement statement_list
+    statement statement_list { $$ = $1; add_child($1, $2); } 
   | statement;
 
 statement:
     statement_block
-  | local_decl ';'
-  | assignment ';'
-  | in_out ';'
-  | function_call ';'
-  | shift ';'
-  | TK_PR_RETURN expression ';'
-  | TK_PR_BREAK ';'
-  | TK_PR_CONTINUE ';'
-  | control_flow;
+  | assignment ';';
+//   | local_decl ';'
+//   | in_out ';'
+//   | function_call ';' 
+//   | shift ';'
+//   | TK_PR_RETURN expression ';'
+//   | TK_PR_BREAK ';'
+//   | TK_PR_CONTINUE ';'
+//   | control_flow;
 
 
 // Declaração de variáveis locais
@@ -152,8 +166,15 @@ local_decl_list:
 
 // Comando de atribuição (depois de declarar)
 assignment:
-    TK_IDENTIFICADOR '=' expression
-  | TK_IDENTIFICADOR '[' expression ']' '=' expression;
+    TK_IDENTIFICADOR '=' expression { 
+        node *id_node = create_leaf_id($1); 
+        $$ = create_node("=", 2, id_node, $3); 
+    } 
+  | TK_IDENTIFICADOR '[' expression ']' '=' expression { 
+        node *id_node = create_leaf_id($1); 
+        node *index_node = create_node("[]", 2, id_node, $3);
+        $$ = create_node("=", 2, index_node, $6); 
+    } ;
 
 
 // Operadores de entrada e saída    
@@ -165,8 +186,16 @@ in_out:
 
 // Chamada de uma função com 0 ou mais argumentos sepados por vígula
 function_call:
-    TK_IDENTIFICADOR '(' ')'
-  | TK_IDENTIFICADOR '(' function_call_list ')';
+    TK_IDENTIFICADOR '(' ')' {
+        char *f_name = strdup($1);
+        char *label = "call ";
+        $$ = create_leaf_fun_call($1, strcat(label, f_name)); 
+    }
+  | TK_IDENTIFICADOR '(' function_call_list ')' {
+        char *f_name = strdup($1);
+        char *label = "call ";
+        $$ = create_leaf_fun_call($1, strcat(label, f_name)); 
+    };
 
 function_call_list:
     expression ',' function_call_list
@@ -203,86 +232,87 @@ control_while:
 // maior será a precedencia da produção
 // A associatividade é construída com a forma que é feito a recursão
 expression:
-    expression10 '?' expression10 ':' expression10
+    expression10 '?' expression10 ':' expression10 { $$ = create_node("?:", 2, $1, $3, $5); } 
   | expression10;
     
 expression10:
-    expression10 TK_OC_OR expression9
+    expression10 TK_OC_OR expression9 { $$ = create_node("||", 2, $1, $3); } 
   | expression9;
 
 expression9:
-    expression9 TK_OC_AND expression8
+    expression9 TK_OC_AND expression8 { $$ = create_node("&&", 2, $1, $3); } 
   | expression8;
 
 expression8:
-    expression8 '|' expression7
+    expression8 '|' expression7 { $$ = create_node("|", 2, $1, $3); } 
   | expression7;
 
 expression7:
-    expression7 '&' expression6
+    expression7 '&' expression6 { $$ = create_node("&", 2, $1, $3); } 
   | expression6;
 
 expression6:
-    expression6 TK_OC_EQ expression5
-  | expression6 TK_OC_NE expression5
+    expression6 TK_OC_EQ expression5 { $$ = create_node("==", 2, $1, $3); } 
+  | expression6 TK_OC_NE expression5 { $$ = create_node("!=", 2, $1, $3); } 
   | expression5;
 
 expression5:
-    expression5 '<' expression4 
-  | expression5 '>' expression4 
-  | expression5 TK_OC_LE expression4
-  | expression5 TK_OC_GE expression4
+    expression5 '<' expression4 { $$ = create_node("<", 2, $1, $3); } 
+  | expression5 '>' expression4 { $$ = create_node(">", 2, $1, $3); } 
+  | expression5 TK_OC_LE expression4 { $$ = create_node("<=", 2, $1, $3); } 
+  | expression5 TK_OC_GE expression4 { $$ = create_node(">=", 2, $1, $3); } 
   | expression4;
 
 expression4:
-    expression4 '+' expression3
-  | expression4 '-' expression3
+    expression4 '+' expression3 { $$ = create_node("+", 2, $1, $3); } 
+  | expression4 '-' expression3 { $$ = create_node("-", 2, $1, $3); } 
   | expression3;
     
 expression3:
-    expression3 '*' expression2
-  | expression3 '/' expression2
-  | expression3 '%' expression2
+    expression3 '*' expression2 { $$ = create_node("*", 2, $1, $3); } 
+  | expression3 '/' expression2 { $$ = create_node("/", 2, $1, $3); } 
+  | expression3 '%' expression2 { $$ = create_node("%", 2, $1, $3); } 
   | expression2;
     
 expression2:
-    expression2 '^' expression1
-  | expression1;
-    
-expression1:
-    '+' expression0 
-  | '-' expression0
-  | '?' expression0
-  | '!' expression0
-  | '&' expression0
-  | '*' expression0
-  | '#' expression0
+    expression2 '^' expression0 { $$ = create_node("^", 2, $1, $3); } 
   | expression0;
+    
+// TODO: criar os tokens e os nodos da árvore
+// expression1:
+//     '+' expression0 { $$ = create_node_unary_ope($1, $2); } 
+//   | '-' expression0
+//   | '?' expression0
+//   | '!' expression0
+//   | '&' expression0
+//   | '*' expression0
+//   | '#' expression0
+//   | expression0;
 
 expression0:
-    '(' expression ')' 
+    '(' expression ')' { $$ = $2; }
   | operand;
 
 
 // Operandos da linguagem com suporte a array    
 operand:
-    TK_IDENTIFICADOR { printf("ID: %s\n", $1); } 
-  | TK_LIT_INT { printf("INTEGER: %d\n", $1); } 
-  | TK_LIT_FLOAT { printf("FLOAT: %f\n", $1); } 
-  | TK_LIT_FALSE { printf("FALSE: %d\n", $1); } 
-  | TK_LIT_TRUE { printf("TRUE: %d\n", $1); } 
-  | function_call 
-  | TK_IDENTIFICADOR '[' TK_LIT_INT ']';
+    TK_IDENTIFICADOR { $$ = create_leaf_id($1); } 
+  | TK_LIT_INT { $$ = create_leaf_int($1); } 
+  | TK_LIT_FLOAT { $$ = create_leaf_float($1); } 
+  | TK_LIT_FALSE { $$ = create_leaf_bool($1, "false"); } 
+  | TK_LIT_TRUE { $$ = create_leaf_bool($1, "true"); } 
+  | function_call
+  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' { $$ = create_node_id_array($1, create_leaf_int($3)); } ;
 
 
 // Literais da linguagem
 literal: 
-    TK_LIT_INT { printf("INTEGER: %d\n", $1); } 
-  | TK_LIT_FLOAT { printf("FLOAT: %f\n", $1); } 
-  | TK_LIT_FALSE { printf("FALSE: %d\n", $1); } 
-  | TK_LIT_TRUE { printf("TRUE: %d\n", $1); } 
-  | TK_LIT_CHAR { printf("CHAR: %c\n", $1); } 
-  | TK_LIT_STRING { printf("STRING: %s\n", $1); } ;
+    TK_LIT_INT { $$ = create_leaf_int($1); } 
+  | TK_LIT_FLOAT { $$ = create_leaf_float($1); } 
+  | TK_LIT_FALSE { $$ = create_leaf_bool($1, "false"); } 
+  | TK_LIT_TRUE { $$ = create_leaf_bool($1, "true"); } 
+  | TK_LIT_CHAR { $$ = create_leaf_char($1); } 
+  | TK_LIT_STRING { $$ = create_leaf_string($1, $1); } ;
 
 
 // Declaração de tipos      

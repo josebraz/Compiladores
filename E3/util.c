@@ -4,8 +4,8 @@
 #include "asp.h"
 #include "util.h"
 
-void exporta(void *arvore) {
-    int i;
+void print_tree_children(void *arvore) {
+	int i;
     node *n = (node *) arvore;
     
     if (n == NULL) return;
@@ -14,22 +14,40 @@ void exporta(void *arvore) {
         printf("%p, %p\n", n, n->nodes[i]);
     }
     for (i = 0; i < n->size; i++) {
-        exporta(n->nodes[i]);
+        print_tree_children(n->nodes[i]);
     }
 }
 
-// TODO: Testar com o valgrind
-void libera(void *arvore) {
-    int i;
+void print_tree_labels(void *arvore) {
+	int i;
     node *n = (node *) arvore;
     
     if (n == NULL) return;
     
-    for (i = 0; i < n->size; i++) {
-        libera(n->nodes[i]);
-    }
+    printf("%p [label=\"%s\"];\n", n, n->label);
     
-    free(n->value);
-    free(n->label);
-    free(n);
+    for (i = 0; i < n->size; i++) {
+        print_tree_labels(n->nodes[i]);
+    }
+}
+
+void exporta(void *arvore) {
+    print_tree_children(arvore);
+    print_tree_labels(arvore);
+}
+
+// TODO: Testar com o valgrind
+void libera(void *arvore) {
+//     int i;
+//     node *n = (node *) arvore;
+//     
+//     if (n == NULL) return;
+//     
+//     for (i = 0; i < n->size; i++) {
+//         libera(n->nodes[i]);
+//     }
+//     
+//     free(n->value);
+//     free(n->label);
+//     free(n);
 }

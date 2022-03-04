@@ -4,7 +4,7 @@
 %{
 
   #include "parser.tab.h"
-  #include "asp.h"
+  #include "types.h"
   #include <string.h>
   
   // Para compilar o analisador
@@ -17,6 +17,12 @@
   
   int get_line_number (void) {
     return yylineno;
+  }
+  
+  void composite_operators() {
+    yylval.valor_lexico.string = strdup(yytext);
+    yylval.line = get_line_number();
+    yylval.type = COMP_OPER_T;
   }
 %}
 
@@ -60,41 +66,22 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)
 "default"   { return TK_PR_DEFAULT; }
 
   /* 2. Caracteres Especiais */
-"," { return yytext[0]; }
-";" { return yytext[0]; }
-":" { return yytext[0]; } 
-"(" { return yytext[0]; } 
-")" { return yytext[0]; } 
-"[" { return yytext[0]; } 
-"]" { return yytext[0]; } 
-"{" { return yytext[0]; }
-"}" { return yytext[0]; }
-"+" { return yytext[0]; }
-"-" { return yytext[0]; }
-"|" { return yytext[0]; }
-"*" { return yytext[0]; }
-"/" { return yytext[0]; }
-"<" { return yytext[0]; }
-">" { return yytext[0]; }
-"=" { return yytext[0]; }
-"!" { return yytext[0]; }
-"&" { return yytext[0]; }
-"%" { return yytext[0]; }
-"#" { return yytext[0]; }
-"^" { return yytext[0]; }
-"." { return yytext[0]; }
-"$" { return yytext[0]; }
-"?" { return yytext[0]; }
+","|";"|":"|"("|")"|"["|"]"|"{"|"}"|"+"|"-"|"|"|"*"|"/"|"<"|">"|"="|"!"|"&"|"%"|"#"|"^"|"."|"$"|"?" { 
+    yylval.valor_lexico.string = strdup(yytext);
+    yylval.line = get_line_number();
+    yylval.type = SPEC_CHAR_T;
+    return yytext[0]; 
+}
 
   /* 3. Operadores Compostos */
-"<=" { return TK_OC_LE; }
-">=" { return TK_OC_GE; }
-"==" { return TK_OC_EQ; }
-"!=" { return TK_OC_NE; }
-"&&" { return TK_OC_AND; }
-"||" { return TK_OC_OR; }
-">>" { return TK_OC_SL; }
-"<<" { return TK_OC_SR; }
+"<=" { composite_operators(); return TK_OC_LE; }
+">=" { composite_operators(); return TK_OC_GE; }
+"==" { composite_operators(); return TK_OC_EQ; }
+"!=" { composite_operators(); return TK_OC_NE; }
+"&&" { composite_operators(); return TK_OC_AND; }
+"||" { composite_operators(); return TK_OC_OR; }
+">>" { composite_operators(); return TK_OC_SL; }
+"<<" { composite_operators(); return TK_OC_SR; }
 
   /* literais bool */
 "false" { 
@@ -114,7 +101,7 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)
 {ID} { 
     yylval.valor_lexico.string = strdup(yytext);
     yylval.line = get_line_number();
-    yylval.type = STRING_T;
+    yylval.type = IDENT_T;
 	return TK_IDENTIFICADOR; 
 }
 

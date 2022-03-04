@@ -1,39 +1,40 @@
 #ifndef ASP_H
 #define ASP_H
 
-#define INTEGER_T   0
-#define FLOAT_T     1
-#define STRING_T    2
-#define BOOL_T      3
-#define CHAR_T      4
-#define SPEC_CHAR_T 5
-#define OPER_COMP_T 6
-#define IDENT_T     7
-
-typedef struct YYSTYPE {
-     int line;
-     int type;
-     union valor_lexico {
-        char* string;
-        char character;
-        int boolean;
-        int integer;
-        float real;
-    } valor_lexico;
-} YYSTYPE;
-
-typedef struct {
+typedef struct node {
     char *label;
     void *value;
     int size;
     struct node **nodes;
 } node; 
 
+void add_child(node* father, node* child);
 
 node* create_node(char *label, int nodes, ...);
 
+node* create_node_id_array(char *value, node* index);
+
+node* create_node_unary_ope(char *value, node* next);
+
 node* create_leaf(void *value, char* label);
 
-node* create_leaf_int(int value, char* label);
+node* create_leaf_int(int value);
+
+node* create_leaf_char(char value);
+
+node* create_leaf_float(float value);
+
+node* create_leaf_bool(int value, char* label);
+
+node* create_leaf_id(char *value);
+
+node* create_leaf_string(char *value, char* label);
+
+node* create_leaf_spec_char(char *value, char* label);
+
+node* create_leaf_comp_oper(char *value, char* label);
+
+node* create_leaf_fun_call(char *value, char* label);
+
 
 #endif
