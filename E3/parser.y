@@ -100,8 +100,8 @@ s : prog { arvore = $1; } ;
 // declarações de funções, também é aceito uma linguagem vazia 
 prog : 
     global_decl prog { $$ = $2; }
-  | type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node($2, 2, $4, $5); }       
-  | TK_PR_STATIC type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node($3, 2, $5, $6); }   
+  | type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node($2, 2, $4, $5); free($2); }       
+  | TK_PR_STATIC type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node($3, 2, $5, $6); free($3); }   
   | { $$ = NULL; };
 
 // Declaração de variáveis globais
@@ -164,24 +164,28 @@ local_decl:
   | type local_decl_list { $$ = $2; };
 
 local_decl_list:
-    TK_IDENTIFICADOR ',' local_decl_list { $$ = $3; }
-  | TK_IDENTIFICADOR { $$ = NULL; }
+    TK_IDENTIFICADOR ',' local_decl_list { $$ = $3; free($1); }
+  | TK_IDENTIFICADOR { $$ = NULL; free($1); }
   | TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list { 
         node *id_node = create_leaf_id($1); 
+        free($2);
         $$ = create_node("<=", 3, id_node, $3, $5); 
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list { 
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
+        free($2);
         $$ = create_node("<=", 3, dest_node, source_node, $5); 
     } 
   | TK_IDENTIFICADOR TK_OC_LE literal { 
         node *id_node = create_leaf_id($1); 
+        free($2);
         $$ = create_node("<=", 2, id_node, $3); 
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR { 
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
+        free($2);
         $$ = create_node("<=", 2, dest_node, source_node);  
     } ;
 
@@ -209,14 +213,12 @@ in_out:
 // Chamada de uma função com 0 ou mais argumentos sepados por vígula
 function_call:
     TK_IDENTIFICADOR '(' ')' {
-        char *f_name = strdup($1);
         char *label = "call ";
-        $$ = create_leaf_fun_call($1, strcat(label, f_name)); 
+        $$ = create_leaf_fun_call($1, strcat(label, $1)); 
     }
   | TK_IDENTIFICADOR '(' function_call_list ')' {
-        char *f_name = strdup($1);
         char *label = "call ";
-        $$ = create_leaf_fun_call($1, strcat(label, f_name)); 
+        $$ = create_leaf_fun_call($1, strcat(label, $1)); 
     };
 
 function_call_list:
@@ -333,7 +335,7 @@ literal:
   | TK_LIT_FALSE { $$ = create_leaf_bool($1, "false"); } 
   | TK_LIT_TRUE { $$ = create_leaf_bool($1, "true"); } 
   | TK_LIT_CHAR { $$ = create_leaf_char($1); } 
-  | TK_LIT_STRING { $$ = create_leaf_string($1, $1); } ;
+  | TK_LIT_STRING { $$ = create_leaf_string($1); } ;
 
 
 // Declaração de tipos      

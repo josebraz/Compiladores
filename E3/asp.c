@@ -69,8 +69,9 @@ node* create_node(char *label, int nodes, ...) {
     va_start(arguments, nodes);
     
     node *new_node = (node*) malloc(sizeof(node));
-    new_node->label = label;
+    new_node->label = strdup(label);
     new_node->size = nodes;
+    new_node->value = NULL;
     
     new_node->nodes = (struct node**) calloc(nodes, sizeof(node*));
     for (i = 0; i < nodes; i++) {
@@ -104,44 +105,52 @@ node* create_leaf(void *value, char* label) {
 node* create_leaf_int(int value) {
     char *label = malloc(20 * sizeof(char));
     sprintf(label, "%d", value);
-    return create_leaf((void *) &value, label);
+    int *value_ref = malloc(sizeof(int));
+    *value_ref = value;
+    return create_leaf((void *) value_ref, label);
 }
 
 node* create_leaf_char(char value) {
     char *label = malloc(2 * sizeof(char));
     label[0] = value;
     label[1] = '\0';
-    return create_leaf((void *) &value, label);
+    char *value_ref = malloc(sizeof(char));
+    *value_ref = value;
+    return create_leaf((void *) value_ref, label);
 }
 
 node* create_leaf_float(float value) {
     char *label = malloc(20 * sizeof(char));
     sprintf(label, "%f", value);
-    return create_leaf((void *) &value, label);
+    float *value_ref = malloc(sizeof(float));
+    *value_ref = value;
+    return create_leaf((void *) value_ref, label);
 }
 
 node* create_leaf_bool(int value, char* label) {
-    return create_leaf((void *) &value, label);
+    int *value_ref = malloc(sizeof(int));
+    *value_ref = value;
+    return create_leaf((void *) value_ref, strdup(label));
 }
 
 node* create_leaf_id(char *value) {
-    return create_leaf((void *) value, value);
+    return create_leaf((void *) value, strdup(value));
 }
 
-node* create_leaf_string(char *value, char* label) {
-    return create_leaf((void *) value, label);
+node* create_leaf_string(char *value) {
+    return create_leaf((void *) value, strdup(value));
 }
 
 node* create_leaf_spec_char(char *value, char* label) {
-    return create_leaf((void *) value, label);
+    return create_leaf((void *) value, strdup(label));
 }
 
 node* create_leaf_comp_oper(char *value, char* label) {
-    return create_leaf((void *) value, label);
+    return create_leaf((void *) value, strdup(label));
 }
 
 node* create_leaf_fun_call(char *value, char* label) {
-    return create_leaf((void *) value, label);
+    return create_leaf((void *) value, strdup(label));
 }
 
 

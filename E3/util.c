@@ -64,16 +64,17 @@ void exporta(void *arvore) {
 
 // TODO: Testar com o valgrind
 void libera(void *arvore) {
-//     int i;
-//     node *n = (node *) arvore;
-//     
-//     if (n == NULL) return;
-//     
-//     for (i = 0; i < n->size; i++) {
-//         libera(n->nodes[i]);
-//     }
-//     
-//     free(n->value);
-//     free(n->label);
-//     free(n);
+    int i;
+    node *n = (node *) arvore;
+
+    if (n == NULL) return;
+
+    for (i = 0; i < n->size; i++) {
+        libera(n->nodes[i]);
+    }
+    
+    if (n->value != NULL) free(n->value);
+    if (n->label != NULL) free(n->label);
+    if (n->nodes != NULL) free(n->nodes);
+    free(n);
 }

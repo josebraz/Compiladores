@@ -67,7 +67,7 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)
 
   /* 2. Caracteres Especiais */
 ","|";"|":"|"("|")"|"["|"]"|"{"|"}"|"+"|"-"|"|"|"*"|"/"|"<"|">"|"="|"!"|"&"|"%"|"#"|"^"|"."|"$"|"?" { 
-    yylval.valor_lexico.string = strdup(yytext);
+    yylval.valor_lexico.character = yytext[0];
     yylval.line = get_line_number();
     yylval.type = SPEC_CHAR_T;
     return yytext[0]; 
@@ -102,7 +102,7 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)
     yylval.valor_lexico.string = strdup(yytext);
     yylval.line = get_line_number();
     yylval.type = IDENT_T;
-	return TK_IDENTIFICADOR; 
+    return TK_IDENTIFICADOR; 
 }
 
   /* 5. Literais */

@@ -30,7 +30,7 @@ node* create_leaf_bool(int value, char* label);
 
 node* create_leaf_id(char *value);
 
-node* create_leaf_string(char *value, char* label);
+node* create_leaf_string(char *value);
 
 node* create_leaf_spec_char(char *value, char* label);
 
