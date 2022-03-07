@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "asp.h"
+#include "types.h"
 #include "util.h"
 
 void print_tree_children(void *arvore) {
@@ -37,7 +37,7 @@ void generate_dot_rec(void *arvore) {
     
     if (n == NULL) return;
     
-    printf("\t%ld [label=\"%s\"]\n", n, n->label);
+    printf("\t%ld [label=\"%s\" type=%d]\n", n, n->label, n->type);
     
     for (i = 0; i < n->size; i++) {
         if (n->nodes[i] != NULL) {
@@ -62,6 +62,20 @@ void exporta(void *arvore) {
     generate_dot(arvore);
 }
 
+void free_node(node *n) {
+    if (n->value != NULL) free(n->value);
+    if (n->label != NULL) free(n->label);
+    if (n->nodes != NULL) free(n->nodes);
+    free(n);
+}
+
+node *next_statement(node *parent) {
+    if (parent->size > 0) {
+        return parent->nodes[parent->size-1];
+    }
+    return NULL;
+}
+
 // TODO: Testar com o valgrind
 void libera(void *arvore) {
     int i;
@@ -73,8 +87,5 @@ void libera(void *arvore) {
         libera(n->nodes[i]);
     }
     
-    if (n->value != NULL) free(n->value);
-    if (n->label != NULL) free(n->label);
-    if (n->nodes != NULL) free(n->nodes);
-    free(n);
+    free_node(n);
 }

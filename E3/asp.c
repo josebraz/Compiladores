@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 #include "asp.h"
+#include "types.h"
 
 int remove_child(node *parent, node *to_remove) {
     int fold = 0;
@@ -62,7 +63,54 @@ void add_child(node *father, node *child) {
     father->size = size + 1;
 }
 
-node* create_node(char *label, int nodes, ...) {
+void print_node(node *node) {
+    struct node *child;
+    int i, size;
+    
+    if (node == NULL) {
+        printf("NULL\n");
+    } else {
+        printf("label: %s type %d, children: ", node->label, node->type);
+        if (node->nodes != NULL) {
+            size = node->size;
+            for (i = 0; i < size; i++) {
+                child = node->nodes[i];
+                if (child != NULL && child->label != NULL) {
+                    printf("%s, ", child->label);
+                } else {
+                    printf("NULL, ");
+                }
+            }
+        } else {
+            printf("NULL");
+        }
+        printf("\n");
+    }
+}
+
+node* find_last_node_of_type(node *parent, enum node_type type) {
+    if (parent == NULL) return NULL;
+    
+    if (parent->size > 0) { // o nodo está no meio, chama recursão
+        node *child = parent->nodes[parent->size-1];
+        node *fold = find_last_node_of_type(child, type);
+        
+        // Vem testando de baixo pra cima
+        if (fold == NULL && child->type == type) {
+            return child;
+        } else {
+            return fold;
+        }
+    } else { // o nodo é folha
+        if (parent->type == type) {
+            return parent;
+        } else {
+            return NULL;
+        }
+    }
+}
+
+node* create_node(char *label, enum node_type type, int nodes, ...) {
     int i;
     va_list arguments;
     
@@ -72,6 +120,7 @@ node* create_node(char *label, int nodes, ...) {
     new_node->label = strdup(label);
     new_node->size = nodes;
     new_node->value = NULL;
+    new_node->type = type;
     
     new_node->nodes = (struct node**) calloc(nodes, sizeof(node*));
     for (i = 0; i < nodes; i++) {
@@ -85,11 +134,25 @@ node* create_node(char *label, int nodes, ...) {
 
 node* create_node_id_array(char *value, node* index) {
     node* id_node = create_leaf_id(value);
-    return create_node("[]", 2, id_node, index);
+    return create_node("[]", ARRAY_T, 2, id_node, index);
 }
 
 node* create_node_unary_ope(char *value, node* next) {
-    return create_node(value, 1, next);
+    return create_node(value, EXPRES_T, 1, next);
+}
+
+node* create_node_binary_ope(char *value, node* node1, node *node2) {
+    return create_node(value, EXPRES_T, 2, node1, node2);
+}
+
+node* create_node_ternary_ope(char *value, node* node1, node *node2, node *node3) {
+    return create_node(value, EXPRES_T, 3, node1, node2, node3);
+}
+
+node* create_node_function(char *name, node* body, node* next) {
+    node *new_node = create_node(name, EXPRES_T, 2, body, next); 
+    free(name);
+    return new_node;
 }
 
 node* create_leaf(void *value, char* label) {
@@ -98,6 +161,7 @@ node* create_leaf(void *value, char* label) {
     new_leaf->value = value;
     new_leaf->size = 0;
     new_leaf->nodes = NULL;
+    new_leaf->type = LITERAL_T;
 
     return new_leaf;
 }

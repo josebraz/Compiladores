@@ -6,6 +6,7 @@
   #include <string.h>
   
   #include "asp.h"
+  #include "util.h"
   #include "types.h"
   
   #define YYDEBUG 1
@@ -76,6 +77,7 @@
 %type<valor_lexico.node> assignment
 %type<valor_lexico.node> local_decl
 %type<valor_lexico.node> local_decl_list
+%type<valor_lexico.node> in_out
 
 %type<valor_lexico.node> expression
 %type<valor_lexico.node> expression10
@@ -100,8 +102,8 @@ s : prog { arvore = $1; } ;
 // declarações de funções, também é aceito uma linguagem vazia 
 prog : 
     global_decl prog { $$ = $2; }
-  | type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node($2, 2, $4, $5); free($2); }       
-  | TK_PR_STATIC type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node($3, 2, $5, $6); free($3); }   
+  | type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node_function($2, $4, $5); }       
+  | TK_PR_STATIC type TK_IDENTIFICADOR function_params function_body prog { $$ = create_node_function($3, $5, $6); }   
   | { $$ = NULL; };
 
 // Declaração de variáveis globais
@@ -110,10 +112,10 @@ global_decl :
   | type global_decl_list ';';
 
 global_decl_list : 
-    TK_IDENTIFICADOR ',' global_decl_list
-  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' ',' global_decl_list
-  | TK_IDENTIFICADOR
-  | TK_IDENTIFICADOR '[' TK_LIT_INT ']';
+    TK_IDENTIFICADOR ',' global_decl_list { free($1); } 
+  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' ',' global_decl_list { free($1); } 
+  | TK_IDENTIFICADOR { free($1); } 
+  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' { free($1); };
 
 // Declaração das funções        
 function_params: 
@@ -131,24 +133,43 @@ function_body: statement_block;
 // Lista de comandos da linguagem
 statement_block:
     '{' '}' { $$ = NULL; }
-  | '{' statement_list '}' { $$ = $2; } ;
+  | '{' statement '}' { 
+        $$ = $2; 
+        $$->type = BLOCK_ONE_MARK_T;
+    }
+  | '{' statement_list '}' { 
+        $$ = $2;
+        $$->type = BLOCK_START_MARK_T; 
+  };
     
 statement_list:
     statement statement_list { 
         if ($1 != NULL) {
-            $$ = $1; add_child($1, $2);
+            if ($1->type == BLOCK_START_MARK_T) {
+                node *tail = find_last_node_of_type($1, BLOCK_END_MARK_T);
+                add_child(tail, $2);
+            } else {
+                add_child($1, $2);
+            }
+            $$ = $1;
         } else {
             $$ = $2;
         }
     } 
-  | statement;
+  | statement {
+        if ($1 != NULL) {
+            $1->type = BLOCK_END_MARK_T;
+        } else {
+            $$ = NULL;
+        }
+  };
 
 statement:
     statement_block
   | assignment ';'
-  | local_decl ';';
-//   | in_out ';'
-//   | function_call ';' 
+  | local_decl ';'
+  | in_out ';'
+  | function_call ';' ;
 //   | shift ';'
 //   | TK_PR_RETURN expression ';'
 //   | TK_PR_BREAK ';'
@@ -169,24 +190,24 @@ local_decl_list:
   | TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list { 
         node *id_node = create_leaf_id($1); 
         free($2);
-        $$ = create_node("<=", 3, id_node, $3, $5); 
+        $$ = create_node("<=", STMT_T, 3, id_node, $3, $5); 
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list { 
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
         free($2);
-        $$ = create_node("<=", 3, dest_node, source_node, $5); 
+        $$ = create_node("<=", STMT_T, 3, dest_node, source_node, $5); 
     } 
   | TK_IDENTIFICADOR TK_OC_LE literal { 
         node *id_node = create_leaf_id($1); 
         free($2);
-        $$ = create_node("<=", 2, id_node, $3); 
+        $$ = create_node("<=", STMT_T, 2, id_node, $3); 
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR { 
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
         free($2);
-        $$ = create_node("<=", 2, dest_node, source_node);  
+        $$ = create_node("<=", STMT_T, 2, dest_node, source_node);  
     } ;
 
 
@@ -194,20 +215,28 @@ local_decl_list:
 assignment:
     TK_IDENTIFICADOR '=' expression { 
         node *id_node = create_leaf_id($1); 
-        $$ = create_node("=", 2, id_node, $3); 
+        $$ = create_node("=", STMT_T, 2, id_node, $3); 
     } 
   | TK_IDENTIFICADOR '[' expression ']' '=' expression { 
         node *id_node = create_leaf_id($1); 
-        node *index_node = create_node("[]", 2, id_node, $3);
-        $$ = create_node("=", 2, index_node, $6); 
+        node *index_node = create_node("[]", ARRAY_T, 2, id_node, $3);
+        $$ = create_node("=", STMT_T, 2, index_node, $6); 
     } ;
 
 
 // Operadores de entrada e saída    
 in_out:
-    TK_PR_INPUT TK_IDENTIFICADOR
-  | TK_PR_OUTPUT TK_IDENTIFICADOR
-  | TK_PR_OUTPUT literal;
+    TK_PR_INPUT TK_IDENTIFICADOR { 
+        node *id_node = create_leaf_id($2);
+        $$ = create_node("in", STMT_T, 1, id_node); 
+    }
+  | TK_PR_OUTPUT TK_IDENTIFICADOR { 
+        node *id_node = create_leaf_id($2);
+        $$ = create_node("out", STMT_T, 1, id_node); 
+    }
+  | TK_PR_OUTPUT literal { 
+        $$ = create_node("out", STMT_T, 1, $2); 
+    };
 
 
 // Chamada de uma função com 0 ou mais argumentos sepados por vígula
@@ -256,50 +285,50 @@ control_while:
 // maior será a precedencia da produção
 // A associatividade é construída com a forma que é feito a recursão
 expression:
-    expression10 '?' expression10 ':' expression10 { $$ = create_node("?:", 3, $1, $3, $5); } 
+    expression10 '?' expression10 ':' expression10 { $$ = create_node_ternary_ope("?:", $1, $3, $5); } 
   | expression10;
     
 expression10:
-    expression10 TK_OC_OR expression9 { $$ = create_node("||", 2, $1, $3); } 
+    expression10 TK_OC_OR expression9 { $$ = create_node_binary_ope("||", $1, $3); } 
   | expression9;
 
 expression9:
-    expression9 TK_OC_AND expression8 { $$ = create_node("&&", 2, $1, $3); } 
+    expression9 TK_OC_AND expression8 { $$ = create_node_binary_ope("&&", $1, $3); } 
   | expression8;
 
 expression8:
-    expression8 '|' expression7 { $$ = create_node("|", 2, $1, $3); } 
+    expression8 '|' expression7 { $$ = create_node_binary_ope("|", $1, $3); } 
   | expression7;
 
 expression7:
-    expression7 '&' expression6 { $$ = create_node("&", 2, $1, $3); } 
+    expression7 '&' expression6 { $$ = create_node_binary_ope("&", $1, $3); } 
   | expression6;
 
 expression6:
-    expression6 TK_OC_EQ expression5 { $$ = create_node("==", 2, $1, $3); } 
-  | expression6 TK_OC_NE expression5 { $$ = create_node("!=", 2, $1, $3); } 
+    expression6 TK_OC_EQ expression5 { $$ = create_node_binary_ope("==", $1, $3); } 
+  | expression6 TK_OC_NE expression5 { $$ = create_node_binary_ope("!=", $1, $3); } 
   | expression5;
 
 expression5:
-    expression5 '<' expression4 { $$ = create_node("<", 2, $1, $3); } 
-  | expression5 '>' expression4 { $$ = create_node(">", 2, $1, $3); } 
-  | expression5 TK_OC_LE expression4 { $$ = create_node("<=", 2, $1, $3); } 
-  | expression5 TK_OC_GE expression4 { $$ = create_node(">=", 2, $1, $3); } 
+    expression5 '<' expression4 { $$ = create_node_binary_ope("<", $1, $3); } 
+  | expression5 '>' expression4 { $$ = create_node_binary_ope(">", $1, $3); } 
+  | expression5 TK_OC_LE expression4 { $$ = create_node_binary_ope("<=", $1, $3); } 
+  | expression5 TK_OC_GE expression4 { $$ = create_node_binary_ope(">=", $1, $3); } 
   | expression4;
 
 expression4:
-    expression4 '+' expression3 { $$ = create_node("+", 2, $1, $3); } 
-  | expression4 '-' expression3 { $$ = create_node("-", 2, $1, $3); } 
+    expression4 '+' expression3 { $$ = create_node_binary_ope("+", $1, $3); } 
+  | expression4 '-' expression3 { $$ = create_node_binary_ope("-", $1, $3); } 
   | expression3;
     
 expression3:
-    expression3 '*' expression2 { $$ = create_node("*", 2, $1, $3); } 
-  | expression3 '/' expression2 { $$ = create_node("/", 2, $1, $3); } 
-  | expression3 '%' expression2 { $$ = create_node("%", 2, $1, $3); } 
+    expression3 '*' expression2 { $$ = create_node_binary_ope("*", $1, $3); } 
+  | expression3 '/' expression2 { $$ = create_node_binary_ope("/", $1, $3); } 
+  | expression3 '%' expression2 { $$ = create_node_binary_ope("%", $1, $3); } 
   | expression2;
     
 expression2:
-    expression2 '^' expression1 { $$ = create_node("^", 2, $1, $3); } 
+    expression2 '^' expression1 { $$ = create_node_binary_ope("^", $1, $3); } 
   | expression1;
 
 expression1:

@@ -1,22 +1,27 @@
 #ifndef ASP_H
 #define ASP_H
 
-typedef struct node {
-    char *label;
-    void *value;
-    int size;
-    struct node **nodes;
-} node; 
+#include "types.h"
 
 void add_child(node* father, node* child);
 
 int remove_child(node *parent, node *to_remove);
 
-node* create_node(char *label, int nodes, ...);
+void print_node(node *node);
+
+node* find_last_node_of_type(node *parent, enum node_type type);
+
+node* create_node(char *label, enum node_type type, int nodes, ...);
 
 node* create_node_id_array(char *value, node* index);
 
 node* create_node_unary_ope(char *value, node* next);
+
+node* create_node_binary_ope(char *value, node* node1, node *node2);
+
+node* create_node_ternary_ope(char *value, node* node1, node *node2, node *node3);
+
+node* create_node_function(char *name, node* body, node* next);
 
 node* create_leaf(void *value, char* label);
 
