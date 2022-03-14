@@ -106,7 +106,7 @@ statement_list:
     statement;
 
 statement:
-    statement_block             |
+    statement_block ';'         |
     local_decl ';'              |
     assignment ';'              |
     in_out ';'                  |
@@ -115,7 +115,7 @@ statement:
     TK_PR_RETURN expression ';' |
     TK_PR_BREAK ';'             |
     TK_PR_CONTINUE ';'          |
-    control_flow;
+    control_flow ';';
 
 
 // Declaração de variáveis locais
@@ -172,7 +172,7 @@ control_flow:
     control_while;
 
 control_if:
-    TK_PR_IF '(' expression ')' statement_block                             |
+    TK_PR_IF '(' expression ')' statement_block                            |
     TK_PR_IF '(' expression ')' statement_block TK_PR_ELSE statement_block;
 
 control_for:
@@ -234,13 +234,13 @@ expression2:
     expression1;
     
 expression1:
-    '+' expression0 |
-    '-' expression0 |
-    '?' expression0 |
-    '!' expression0 |
-    '&' expression0 |
-    '*' expression0 |
-    '#' expression0 |
+    '+' expression1 |
+    '-' expression1 |
+    '?' expression1 |
+    '!' expression1 |
+    '&' expression1 |
+    '*' expression1 |
+    '#' expression1 |
     expression0;
 
 expression0:
@@ -252,10 +252,8 @@ operand:
     TK_IDENTIFICADOR |
     TK_LIT_INT       |
     TK_LIT_FLOAT     |
-    TK_LIT_FALSE     |
-    TK_LIT_TRUE      |
     function_call    |
-    TK_IDENTIFICADOR '[' TK_LIT_INT ']';
+    TK_IDENTIFICADOR '[' expression ']';
 
 
 // Literais da linguagem

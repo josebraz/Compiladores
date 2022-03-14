@@ -165,7 +165,7 @@ statement_list:
   };
 
 statement:
-    statement_block
+    statement_block ';'
   | assignment ';'
   | local_decl ';'
   | in_out ';'
@@ -174,7 +174,7 @@ statement:
 //   | TK_PR_RETURN expression ';'
 //   | TK_PR_BREAK ';'
 //   | TK_PR_CONTINUE ';'
-//   | control_flow;
+//   | control_flow ';';
 
 
 // Declaração de variáveis locais
@@ -332,13 +332,13 @@ expression2:
   | expression1;
 
 expression1:
-    '+' expression0 { $$ = create_node_unary_ope("+", $2); } 
-  | '-' expression0 { $$ = create_node_unary_ope("-", $2); } 
-  | '?' expression0 { $$ = create_node_unary_ope("?", $2); } 
-  | '!' expression0 { $$ = create_node_unary_ope("!", $2); } 
-  | '&' expression0 { $$ = create_node_unary_ope("&", $2); } 
-  | '*' expression0 { $$ = create_node_unary_ope("*", $2); } 
-  | '#' expression0 { $$ = create_node_unary_ope("#", $2); } 
+    '+' expression1 { $$ = create_node_unary_ope("+", $2); } 
+  | '-' expression1 { $$ = create_node_unary_ope("-", $2); } 
+  | '?' expression1 { $$ = create_node_unary_ope("?", $2); } 
+  | '!' expression1 { $$ = create_node_unary_ope("!", $2); } 
+  | '&' expression1 { $$ = create_node_unary_ope("&", $2); } 
+  | '*' expression1 { $$ = create_node_unary_ope("*", $2); } 
+  | '#' expression1 { $$ = create_node_unary_ope("#", $2); } 
   | expression0;
 
 expression0:
@@ -351,10 +351,8 @@ operand:
     TK_IDENTIFICADOR { $$ = create_leaf_id($1); } 
   | TK_LIT_INT { $$ = create_leaf_int($1); } 
   | TK_LIT_FLOAT { $$ = create_leaf_float($1); } 
-  | TK_LIT_FALSE { $$ = create_leaf_bool($1, "false"); } 
-  | TK_LIT_TRUE { $$ = create_leaf_bool($1, "true"); } 
   | function_call
-  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' { $$ = create_node_id_array($1, create_leaf_int($3)); } ;
+  | TK_IDENTIFICADOR '[' expression ']' { $$ = create_node_id_array($1, create_leaf_int($3)); } ;
 
 
 // Literais da linguagem
