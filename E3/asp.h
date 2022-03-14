@@ -41,7 +41,7 @@ node* create_leaf_spec_char(char *value, char* label);
 
 node* create_leaf_comp_oper(char *value, char* label);
 
-node* create_leaf_fun_call(char *value, char* label);
+node* create_leaf_fun_call(char *value);
 
 
 #endif

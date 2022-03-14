@@ -63,10 +63,12 @@ void exporta(void *arvore) {
 }
 
 void free_node(node *n) {
-    if (n->value != NULL) free(n->value);
-    if (n->label != NULL) free(n->label);
-    if (n->nodes != NULL) free(n->nodes);
-    free(n);
+    if (n != NULL) {
+        if (n->value != NULL) free(n->value);
+        if (n->label != NULL) free(n->label);
+        if (n->nodes != NULL) free(n->nodes);
+        free(n);
+    }
 }
 
 node *next_statement(node *parent) {

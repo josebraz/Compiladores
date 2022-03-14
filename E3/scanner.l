@@ -119,9 +119,9 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)
     return TK_LIT_FLOAT; 
 }
 {STRING}  { 
-    char *value = strdup(yytext);
+    char *value = strdup(yytext + 1);
     value[strlen(value)-1] = '\0';
-    yylval.valor_lexico.string = value + 1;
+    yylval.valor_lexico.string = value;
     yylval.line = get_line_number();
     yylval.type = STRING_T;
     return TK_LIT_STRING; 

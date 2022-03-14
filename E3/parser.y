@@ -78,6 +78,12 @@
 %type<valor_lexico.node> local_decl
 %type<valor_lexico.node> local_decl_list
 %type<valor_lexico.node> in_out
+%type<valor_lexico.node> shift
+%type<valor_lexico.node> control_flow
+%type<valor_lexico.node> control_if
+%type<valor_lexico.node> control_for
+%type<valor_lexico.node> control_while
+%type<valor_lexico.node> control_jump
 
 %type<valor_lexico.node> expression
 %type<valor_lexico.node> expression10
@@ -133,13 +139,11 @@ function_body: statement_block;
 // Lista de comandos da linguagem
 statement_block:
     '{' '}' { $$ = NULL; }
-  | '{' statement '}' { 
-        $$ = $2; 
-        $$->type = BLOCK_ONE_MARK_T;
-    }
   | '{' statement_list '}' { 
         $$ = $2;
-        $$->type = BLOCK_START_MARK_T; 
+        if ($$->type != BLOCK_END_MARK_T) {
+            $$->type = BLOCK_START_MARK_T; 
+        }
   };
     
 statement_list:
@@ -159,9 +163,8 @@ statement_list:
   | statement {
         if ($1 != NULL) {
             $1->type = BLOCK_END_MARK_T;
-        } else {
-            $$ = NULL;
         }
+        $$ = $1;
   };
 
 statement:
@@ -169,13 +172,10 @@ statement:
   | assignment ';'
   | local_decl ';'
   | in_out ';'
-  | function_call ';' ;
-//   | shift ';'
-//   | TK_PR_RETURN expression ';'
-//   | TK_PR_BREAK ';'
-//   | TK_PR_CONTINUE ';'
-//   | control_flow ';';
-
+  | function_call ';'
+  | shift ';'
+  | control_jump ';'
+  | control_flow ';';
 
 // Declaração de variáveis locais
 local_decl:
@@ -210,7 +210,6 @@ local_decl_list:
         $$ = create_node("<=", STMT_T, 2, dest_node, source_node);  
     } ;
 
-
 // Comando de atribuição (depois de declarar)
 assignment:
     TK_IDENTIFICADOR '=' expression { 
@@ -241,26 +240,37 @@ in_out:
 
 // Chamada de uma função com 0 ou mais argumentos sepados por vígula
 function_call:
-    TK_IDENTIFICADOR '(' ')' {
-        char *label = "call ";
-        $$ = create_leaf_fun_call($1, strcat(label, $1)); 
-    }
-  | TK_IDENTIFICADOR '(' function_call_list ')' {
-        char *label = "call ";
-        $$ = create_leaf_fun_call($1, strcat(label, $1)); 
-    };
+    TK_IDENTIFICADOR '(' ')' { $$ = create_leaf_fun_call($1); }
+  | TK_IDENTIFICADOR '(' function_call_list ')' { $$ = create_leaf_fun_call($1); };
 
 function_call_list:
     expression ',' function_call_list
   | expression;
 
-
 // Operador de shift com suporte a lista
 shift:
-    TK_IDENTIFICADOR TK_OC_SL TK_LIT_INT 
-  | TK_IDENTIFICADOR '[' expression ']' TK_OC_SL TK_LIT_INT
-  | TK_IDENTIFICADOR TK_OC_SR TK_LIT_INT
-  | TK_IDENTIFICADOR '[' expression ']' TK_OC_SR TK_LIT_INT;
+    TK_IDENTIFICADOR TK_OC_SL TK_LIT_INT {
+        node *id_node = create_leaf_id($1);
+        node *offset = create_leaf_int($3);
+        $$ = create_node("<<", STMT_T, 2, id_node, offset); 
+    }
+  | TK_IDENTIFICADOR '[' expression ']' TK_OC_SL TK_LIT_INT {
+        node *id_node = create_leaf_id($1); 
+        node *index_node = create_node("[]", ARRAY_T, 2, id_node, $3);
+        node *offset = create_leaf_int($6);
+        $$ = create_node("<<", STMT_T, 2, index_node, offset); 
+  }
+  | TK_IDENTIFICADOR TK_OC_SR TK_LIT_INT {
+        node *id_node = create_leaf_id($1);
+        node *offset = create_leaf_int($3);
+        $$ = create_node(">>", STMT_T, 2, id_node, offset); 
+    }
+  | TK_IDENTIFICADOR '[' expression ']' TK_OC_SR TK_LIT_INT {
+        node *id_node = create_leaf_id($1); 
+        node *index_node = create_node("[]", ARRAY_T, 2, id_node, $3);
+        node *offset = create_leaf_int($6);
+        $$ = create_node(">>", STMT_T, 2, index_node, offset); 
+  };
 
 
 // Controle de fluxo, loop for, while e if
@@ -270,15 +280,27 @@ control_flow:
   | control_while;
 
 control_if:
-    TK_PR_IF '(' expression ')' statement_block
-  | TK_PR_IF '(' expression ')' statement_block TK_PR_ELSE statement_block;
+    TK_PR_IF '(' expression ')' statement_block {
+        $$ = create_node("if", STMT_T, 2, $3, $5); 
+    }
+  | TK_PR_IF '(' expression ')' statement_block TK_PR_ELSE statement_block {
+        $$ = create_node("if", STMT_T, 3, $3, $5, $7); 
+    };
 
 control_for:
-    TK_PR_FOR '(' assignment ':' expression ':' assignment ')' statement_block;    
+    TK_PR_FOR '(' assignment ':' expression ':' assignment ')' statement_block {
+        $$ = create_node("for", STMT_T, 4, $3, $5, $7, $9); 
+    };    
 
 control_while:
-    TK_PR_WHILE '(' expression ')' TK_PR_DO statement_block;
+    TK_PR_WHILE '(' expression ')' TK_PR_DO statement_block {
+        $$ = create_node("while", STMT_T, 2, $3, $6); 
+    };
 
+control_jump:
+    TK_PR_RETURN expression { $$ = create_node("return", STMT_T, 1, $2); }
+  | TK_PR_BREAK { $$ = create_node("break", STMT_T, 0); }
+  | TK_PR_CONTINUE { $$ = create_node("continue", STMT_T, 0); }
 
 // Expressões Aritméticas e Lógicas
 // Quanto mais "profundo" na estrutura das expressões da gramática
@@ -345,14 +367,13 @@ expression0:
     '(' expression ')' { $$ = $2; }
   | operand;
 
-
 // Operandos da linguagem com suporte a array    
 operand:
     TK_IDENTIFICADOR { $$ = create_leaf_id($1); } 
   | TK_LIT_INT { $$ = create_leaf_int($1); } 
   | TK_LIT_FLOAT { $$ = create_leaf_float($1); } 
   | function_call
-  | TK_IDENTIFICADOR '[' expression ']' { $$ = create_node_id_array($1, create_leaf_int($3)); } ;
+  | TK_IDENTIFICADOR '[' expression ']' { $$ = create_node_id_array($1, $3); } ;
 
 
 // Literais da linguagem

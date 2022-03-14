@@ -16,10 +16,13 @@ int teste() {
             rr = 4453454;
             ivnibjn = 59884;
             asassa = 332434;
-        }
+            { 
+                aaaaaa = 5; 
+            };
+        };
         aaaaa = 545;
         bbbb = 3434534;
-    }
+    };
 }
 
 int test1() {

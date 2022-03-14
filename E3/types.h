@@ -9,8 +9,7 @@ enum node_type {
     INIT_T = 4,
     
     BLOCK_START_MARK_T = 5,
-    BLOCK_END_MARK_T = 6,
-    BLOCK_ONE_MARK_T = 7
+    BLOCK_END_MARK_T = 6
 };
 
 typedef struct node {

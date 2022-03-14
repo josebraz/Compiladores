@@ -213,8 +213,11 @@ node* create_leaf_comp_oper(char *value, char* label) {
     return create_leaf((void *) value, strdup(label));
 }
 
-node* create_leaf_fun_call(char *value, char* label) {
-    return create_leaf((void *) value, strdup(label));
+node* create_leaf_fun_call(char *value) {
+    char *label = calloc(strlen(value) + 6, sizeof(char));
+    strcpy(label, "call ");
+    strcat(label, value);
+    return create_leaf((void *) value, label);
 }
 
 

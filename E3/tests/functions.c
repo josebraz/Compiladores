@@ -7,7 +7,9 @@ int function_test(string a, int b) { }
 static int function_test(string a, int b) { }
 
 int function_test(string a, const int b) { }
-static int function_test(const string a, int b) { }
+static int function_test(const string a, int b) { 
+    string a <= "ascasas";
+}
 
 int function_test(string a, int b) { 
     static int teste;
@@ -32,8 +34,9 @@ int function_test(string a, int b) {
     
     {
     	bool var <= 'o';
-    	bool var <= 'o';
-    }
-    return 0;
+        bool var <= "vdsvsv";
+    };
+    
+    return ascasf + 4 * 2020;
 }
 
