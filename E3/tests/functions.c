@@ -30,11 +30,12 @@ int function_test(string a, int b) {
     
     function_test(a, b);
     
-    function_test(5 * 5, b);
+    function_test(5 * 5, b, 30 + 50, aaa * 3);
     
     {
     	bool var <= 'o';
-        bool var <= "vdsvsv";
+        bool var <= "vdsvsv", aa <= 888;
+        function_test(a, b);
     };
     
     return ascasf + 4 * 2020;

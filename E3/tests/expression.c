@@ -4,7 +4,7 @@ int aacacac;
 
 int teste() {
     int a;
-    int a <= 4, b, c <= 7;
+    int a <= 4, b, c <= 7, d <= 5050, aaa;
    
      
     b = 38%2+59--32+25^2;

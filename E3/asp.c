@@ -1,3 +1,5 @@
+/* autores: José Henrique da Silva Braz & Jeison Casonatti Caroly */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,8 +46,8 @@ int remove_child(node *parent, node *to_remove) {
     }
 }
 
-void add_child(node *father, node *child) {
-    if (father == NULL || child == NULL) return;
+node *add_child(node *father, node *child) {
+    if (father == NULL || child == NULL) return NULL;
     
     int i;
     int size = father->size;
@@ -61,6 +63,8 @@ void add_child(node *father, node *child) {
     
     father->nodes = new_childrens;
     father->size = size + 1;
+
+    return father;
 }
 
 void print_node(node *node) {
@@ -205,19 +209,13 @@ node* create_leaf_string(char *value) {
     return create_leaf((void *) value, strdup(value));
 }
 
-node* create_leaf_spec_char(char *value, char* label) {
-    return create_leaf((void *) value, strdup(label));
-}
-
-node* create_leaf_comp_oper(char *value, char* label) {
-    return create_leaf((void *) value, strdup(label));
-}
-
-node* create_leaf_fun_call(char *value) {
+node* create_leaf_fun_call(char *value, node* params) {
     char *label = calloc(strlen(value) + 6, sizeof(char));
     strcpy(label, "call ");
     strcat(label, value);
-    return create_leaf((void *) value, label);
+    node *leaf = create_leaf((void *) value, label);
+    add_child(leaf, params);
+    return leaf;
 }
 
 
