@@ -3,24 +3,10 @@
 #ifndef STACK_H
 #define STACK_H
 
-#include "stdlib.h"
+#include "types.h"
 
 #define STACK_INITIAL_CAPACITY 10
 #define STACK_REALLOC_STEP     10
-
-// Estrura que representa uma entrada na pilha
-// não suportado ponteiros de alocação dinâmica nesta estrutura
-typedef struct __stack_entry {
-    int test; // TODO: incluir os campos que precisar
-} stack_entry_t;
-
-// ATENÇÃO: Não mexer nos atributos desta estrutura diretamete!
-typedef struct __stack
-{
-    int index;               // Indice atual da pilha, -1 é vazia
-    size_t actual_capacity;  // Capacidade atual da pilha
-    stack_entry_t **entries; // Ponteiro para as entradas da pilha
-} stack_t;
 
 /**
  * Cria uma pilha nova com capacidade inicial de 10
@@ -34,23 +20,18 @@ stack_t* stack_init();
 stack_t* stack_destroy(stack_t* s);
 
 /**
- * Cria uma entrada, sem alterar o estado da pilha 
- */
-stack_entry_t* stack_create_entry(int value);
-
-/**
  * Atualiza entry como o elemento mais acima da pilha e remove
  * e retorna 1, caso a pilha esteja vazia, retorna 0
  * 
  * Obs: Desaloca memória se for preciso
  */
-int stack_pop(stack_t *s, stack_entry_t *entry);
+stack_entry_t *stack_pop(stack_t *s);
 
 /**
  * Apenas atualiza entry como o elemento de cima sem remover
  * e retorna 1, caso a pilha esteja vazia, retorna 0
  */
-int stack_peek(stack_t *s, stack_entry_t *entry);
+stack_entry_t *stack_peek(stack_t *s);
 
 /**
  * Coloca um novo elemento no topo da pilha

@@ -36,28 +36,19 @@ stack_t* stack_destroy(stack_t* s) {
     return NULL;
 }
 
-stack_entry_t* stack_create_entry(int value) {
-    stack_entry_t* stack_entry = (stack_entry_t *) malloc(sizeof(stack_entry_t));
-    stack_entry->test = value;
-    return stack_entry;
-}
-
-int stack_pop(stack_t *s, stack_entry_t *entry) {
+stack_entry_t *stack_pop(stack_t *s) {
     if (stack_is_empty(s) == 1) {
-        return 0;
+        return NULL;
     } else {
-        memmove(entry, s->entries[s->index], sizeof(stack_entry_t));
-        free(s->entries[s->index--]);
-        return 1;
+        return s->entries[s->index--];
     }
 }
 
-int stack_peek(stack_t *s, stack_entry_t *entry) {
+stack_entry_t *stack_peek(stack_t *s) {
     if (stack_is_empty(s) == 1) {
-        return 0;
+        return NULL;
     } else {
-        memmove(entry, s->entries[s->index], sizeof(stack_entry_t));
-        return 1;
+        return s->entries[s->index];
     }
 }
 

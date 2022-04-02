@@ -45,7 +45,7 @@ void hashmap_alloc_more_mem(hashmap_t *map) {
     int count = 0, index = 0;
     while (count < old_size && index < old_capacity) {
         if (old_values[index] != NULL) {
-            hashmap_put(map, &(old_values[index]->key), &(old_values[index]->value));
+            hashmap_put(map, old_values[index]->key, old_values[index]->value);
             count++;
         }
         index++;
@@ -53,21 +53,21 @@ void hashmap_alloc_more_mem(hashmap_t *map) {
     free(old_values);
 }
 
-int hashmap_hashcode(const hashmap_key_t *key) {
+int hashmap_hashcode(const char *key) {
     int i;
     int sum = 0;
-    int len = strlen(key->key);
+    int len = strlen(key);
     for (i = 0; i < len; i++) {
-        sum += key->key[i] * 31;
+        sum += key[i] * 31;
     }
     return sum;
 }
 
-int hashmap_index(const hashmap_t *map, const hashmap_key_t *key) {
+int hashmap_index(const hashmap_t *map, const char *key) {
     return hashmap_hashcode(key) % map->actual_capacity;
 }
 
-void hashmap_put(hashmap_t *map, const hashmap_key_t *key, const hashmap_value_t *value) {
+void hashmap_put(hashmap_t *map, const char *key, const hashmap_value_t *value) {
     static int all_conflits = 0;
     int index, conflits = 0;
     hashmap_entry_t *entry;
@@ -85,25 +85,24 @@ void hashmap_put(hashmap_t *map, const hashmap_key_t *key, const hashmap_value_t
     }
     if (conflits > 0) {
         all_conflits += conflits;
-        printf("CONFLITO PUT %d all %d capacity %d size %d\n", conflits, all_conflits, map->actual_capacity, map->size);
     }
 
     entry = (hashmap_entry_t *) malloc(sizeof(hashmap_entry_t));
-    memcpy(entry->key.key, key->key, strlen(key->key));
-    memcpy(entry->value.value, value->value, strlen(value->value));
+    memcpy(entry->key, key, strlen(key));
+    entry->value = value;
     map->values[index] = entry;
     map->size++;
 }
 
-int hashmap_compare_key(const hashmap_key_t *key1, const hashmap_key_t *key2) {
-    return strcmp(key1->key, key2->key);
+int hashmap_compare_key(const char* key1, const char* key2) {
+    return strcmp(key1, key2);
 }
 
-hashmap_entry_t *hashmap_entry(const hashmap_t *map, const hashmap_key_t *key, int *out_index) {
+hashmap_entry_t *hashmap_entry(const hashmap_t *map, const char *key, int *out_index) {
     int conflits = 0;
     int index = hashmap_index(map, key);
     hashmap_entry_t *entry = map->values[index];
-    while ((entry == NULL || hashmap_compare_key(&(entry->key), key) != 0) && 
+    while ((entry == NULL || hashmap_compare_key(entry->key, key) != 0) && 
             conflits < map->actual_capacity) {
         conflits++;
         index = (index + 3) % map->actual_capacity;
@@ -118,30 +117,24 @@ hashmap_entry_t *hashmap_entry(const hashmap_t *map, const hashmap_key_t *key, i
     return entry;
 }
 
-int hashmap_get(const hashmap_t *map, const hashmap_key_t *key, hashmap_value_t *value) {
+hashmap_value_t *hashmap_get(const hashmap_t *map, const char *key) {
     int index;
     hashmap_entry_t *entry = hashmap_entry(map, key, &index);
     if (entry == NULL) {
-        memcpy(value->value, "\0", 1);
-        return 0;
+        return NULL;
     } else {
-        memcpy(value->value, entry->value.value, strlen(entry->value.value));
-        return 1;
+        return entry->value;
     }
 }
 
-int hashmap_remove(hashmap_t *map, const hashmap_key_t *key, hashmap_value_t *value) {
+hashmap_value_t *hashmap_remove(hashmap_t *map, const char *key) {
     int index;
     hashmap_entry_t *entry = hashmap_entry(map, key, &index);
-
     if (entry == NULL) {
-        memcpy(value->value, "\0", 1);
-        return 0;
+        return NULL;
     } else {
-        memcpy(value->value, entry->value.value, strlen(entry->value.value));
-        free(entry);
         map->values[index] = NULL;
         map->size--;
-        return 1;
+        return entry->value;
     }
 }

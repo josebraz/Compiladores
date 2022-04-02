@@ -6,6 +6,8 @@
 #include "types.h"
 #include "util.h"
 #include "asp.h"
+#include "semantic.h"
+#include "hashmap.h"
 
 void print_tree_children(void *arvore) {
 	int i;
@@ -41,7 +43,7 @@ void generate_dot_rec(void *arvore) {
     
     if (n == NULL) return;
     
-    printf("\t%ld [label=\"%s\" type=%d]\n", n, n->label, n->type);
+    printf("\t%ld [label=\"%s\" mark=%d]\n", n, n->label, n->mark);
     
     for (i = 0; i < n->size; i++) {
         if (n->nodes[i] != NULL) {
@@ -63,7 +65,9 @@ void generate_dot(void *arvore) {
 void exporta(void *arvore) {
     // print_tree_children(arvore);
     // print_tree_labels(arvore);
-    generate_dot(arvore);
+    // generate_dot(arvore);
+
+    print_stack();
 }
 
 void free_node(node *n) {
@@ -77,10 +81,10 @@ void free_node(node *n) {
 
 node *process_local_desc(node *n) {
     if (n != NULL) {
-        if (n->type != BLOCK_END_MARK_T) {
-            n->type = BLOCK_START_MARK_T; 
+        if (n->mark != BLOCK_END_MARK_T) {
+            n->mark = BLOCK_START_MARK_T; 
         } else {
-            n->type = STMT_T;
+            n->mark = STMT_T;
         }
     }
     return n;
@@ -88,11 +92,11 @@ node *process_local_desc(node *n) {
 
 node *process_stmt_list(node *head, node *back) {
     if (head != NULL) {
-        if (head->type == BLOCK_START_MARK_T) {
+        if (head->mark == BLOCK_START_MARK_T) {
             node *tail = find_last_node_of_type(head, BLOCK_END_MARK_T);
             add_child(tail, back);
-            head->type = STMT_T;
-            tail->type = STMT_T;
+            head->mark = STMT_T;
+            tail->mark = STMT_T;
         } else {
             add_child(head, back);
         }

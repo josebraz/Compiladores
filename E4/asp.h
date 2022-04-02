@@ -5,6 +5,8 @@
 
 #include "types.h"
 
+node *next_node(node *parent);
+
 /**
  * adiciona um filho ao pai
  * 
@@ -38,19 +40,19 @@ void print_node(node *node);
  * @param type 
  * @return node* 
  */
-node* find_last_node_of_type(node *parent, enum node_type type);
+node* find_last_node_of_type(node *parent, enum node_mark mark);
 
 /**
  * Cria um nodo com o identificador label, do tipo type com o número
  * de filhos nodes (variável)
  * 
  * @param label 
- * @param type 
+ * @param mark 
  * @param nodes 
  * @param ... 
  * @return node* o novo nodo criado
  */
-node* create_node(char *label, enum node_type type, int nodes, ...);
+node* create_node(char *label, enum node_mark mark, int nodes, ...);
 
 /**
  * Cria um novo do tipo identificador array
@@ -110,6 +112,18 @@ node* create_node_function(char *name, node* body, node* next);
  * @return node* a nova folha criada
  */
 node* create_leaf(void *value, char* label);
+
+/**
+ * Cria uma nova folha para representar uma declaração de tipo
+ * 
+ * @param value 
+ * @return node* a nova folha criada
+ */
+node* create_leaf_type(char *ident, enum data_type type);
+
+node* create_leaf_var_decl(char *ident);
+
+node* create_node_array_decl(char *ident, int size);
 
 /**
  * Cria uma nova folha do tipo inteiro

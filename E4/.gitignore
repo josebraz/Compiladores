@@ -1,0 +1,4 @@
+*.o
+etapa4
+lex.yy.*
+parser.tab.*

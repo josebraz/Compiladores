@@ -1,6 +1,18 @@
 {
     "files.associations": {
         "stdlib.h": "c",
-        "stack.h": "c"
+        "stack.h": "c",
+        "cmath": "c",
+        "type_traits": "c",
+        "limits": "c",
+        "typeinfo": "c",
+        "error.h": "c",
+        "errors.h": "c",
+        "types.h": "c",
+        "hashmap.h": "c",
+        "stdio.h": "c",
+        "string.h": "c",
+        "semantic.h": "c",
+        "list.h": "c"
     }
 }

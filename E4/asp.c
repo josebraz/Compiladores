@@ -8,6 +8,14 @@
 #include "asp.h"
 #include "types.h"
 
+node *next_node(node *parent) {
+    if (parent->nodes != NULL) {
+        return parent->nodes[parent->size-1];
+    } else {
+        return NULL;
+    }
+}
+
 int remove_child(node *parent, node *to_remove) {
     int fold = 0;
     int i, j;
@@ -74,7 +82,7 @@ void print_node(node *node) {
     if (node == NULL) {
         printf("NULL\n");
     } else {
-        printf("label: %s type %d, children: ", node->label, node->type);
+        printf("label: %s type %d, children: ", node->label, node->mark);
         if (node->nodes != NULL) {
             size = node->size;
             for (i = 0; i < size; i++) {
@@ -92,21 +100,21 @@ void print_node(node *node) {
     }
 }
 
-node* find_last_node_of_type(node *parent, enum node_type type) {
+node* find_last_node_of_type(node *parent, enum node_mark mark) {
     if (parent == NULL) return NULL;
     
     if (parent->size > 0) { // o nodo está no meio, chama recursão
         node *child = parent->nodes[parent->size-1];
-        node *fold = find_last_node_of_type(child, type);
+        node *fold = find_last_node_of_type(child, mark);
         
         // Vem testando de baixo pra cima
-        if (fold == NULL && child->type == type) {
+        if (fold == NULL && child->mark == mark) {
             return child;
         } else {
             return fold;
         }
     } else { // o nodo é folha
-        if (parent->type == type) {
+        if (parent->mark == mark) {
             return parent;
         } else {
             return NULL;
@@ -114,7 +122,7 @@ node* find_last_node_of_type(node *parent, enum node_type type) {
     }
 }
 
-node* create_node(char *label, enum node_type type, int nodes, ...) {
+node* create_node(char *label, enum node_mark mark, int nodes, ...) {
     int i;
     va_list arguments;
     
@@ -124,7 +132,7 @@ node* create_node(char *label, enum node_type type, int nodes, ...) {
     new_node->label = strdup(label);
     new_node->size = nodes;
     new_node->value = NULL;
-    new_node->type = type;
+    new_node->mark = mark;
     
     new_node->nodes = (struct node**) calloc(nodes, sizeof(node*));
     for (i = 0; i < nodes; i++) {
@@ -165,9 +173,28 @@ node* create_leaf(void *value, char* label) {
     new_leaf->value = value;
     new_leaf->size = 0;
     new_leaf->nodes = NULL;
-    new_leaf->type = LITERAL_T;
+    new_leaf->mark = LITERAL_T;
+    new_leaf->type = DT_UNKNOWN;
 
     return new_leaf;
+}
+
+node* create_leaf_type(char *ident, enum data_type type) {
+    node *leaf = create_leaf((void *) ident, strdup(ident));
+    leaf->type = type;
+    return leaf;
+}
+
+node* create_leaf_var_decl(char *ident) {
+    node *leaf = create_leaf((void *) ident, strdup(ident));
+    leaf->mark = DECL_VAR_T;
+    return leaf;
+}
+
+node* create_node_array_decl(char *ident, int size) {
+    node *id_node = create_leaf_id(ident);
+    node *size_node = create_leaf_int(size); 
+    return create_node("[]", DECL_ARRAY_T, 2, id_node, size_node);
 }
 
 node* create_leaf_int(int value) {

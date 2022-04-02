@@ -5,6 +5,7 @@
   #include <stdlib.h>
   #include <string.h>
   
+  #include "semantic.h"
   #include "asp.h"
   #include "util.h"
   #include "types.h"
@@ -86,6 +87,10 @@
 %type<node> control_while
 %type<node> control_jump
 
+%type<node> function_params_list
+%type<node> function_params
+%type<node> global_decl_list
+
 %type<node> expression
 %type<node> expression10
 %type<node> expression9
@@ -99,57 +104,74 @@
 %type<node> expression1
 %type<node> expression0
 
+%type<dt_type> type
+
 %start s
 
 %%
 
 // Única entrada, para setar a arvore
-s : prog { arvore = $1; } ;
+s : prog { arvore = $1; };
 
 // O programa é um conjunto de declarações globais e
 // declarações de funções, também é aceito uma linguagem vazia 
 prog : 
     global_decl prog { $$ = $2; }
   | type TK_IDENTIFICADOR function_params function_body prog { 
+        ident_fun_declaration($2, $1, $3);
         $$ = create_node_function($2, $4, $5); 
     }       
   | TK_PR_STATIC type TK_IDENTIFICADOR function_params function_body prog { 
+        ident_fun_declaration($3, $2, $4);
         $$ = create_node_function($3, $5, $6); 
     }   
   | { $$ = NULL; };
 
 // Declaração de variáveis globais
 global_decl : 
-    TK_PR_STATIC type global_decl_list ';'
-  | type global_decl_list ';';
+    TK_PR_STATIC type global_decl_list ';' { ident_var_array_global_decl_list($2, 1, $3); }
+  | type global_decl_list ';' { ident_var_array_global_decl_list($1, 0, $2); };
 
 global_decl_list : 
-    TK_IDENTIFICADOR ',' global_decl_list { free($1); } 
-  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' ',' global_decl_list { free($1); } 
-  | TK_IDENTIFICADOR { free($1); } 
-  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' { free($1); };
+    TK_IDENTIFICADOR ',' global_decl_list {
+        node *id_node = create_leaf_var_decl($1); 
+        $$ = add_child(id_node, $3);
+    }
+  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' ',' global_decl_list {
+        node *array_node = create_node_array_decl($1, $3);
+        $$ = add_child(array_node, $6);
+  }
+  | TK_IDENTIFICADOR { $$ = create_leaf_var_decl($1); }
+  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' { $$ = create_node_array_decl($1, $3); };
 
 // Declaração das funções        
 function_params: 
-    '(' ')'
-  | '(' function_params_list ')';
+    '(' ')' { $$ = NULL; }
+  | '(' function_params_list ')' { $$ = $2; } ;
 
 function_params_list: 
-    type TK_IDENTIFICADOR ',' function_params_list { free($2); }
-  | TK_PR_CONST type TK_IDENTIFICADOR ',' function_params_list { free($3); }
-  | type TK_IDENTIFICADOR { free($2); }
-  | TK_PR_CONST type TK_IDENTIFICADOR { free($3); };  
+    type TK_IDENTIFICADOR ',' function_params_list { 
+        node *id_node = create_leaf_type($2, $1); 
+        $$ = add_child(id_node, $4);
+    }
+  | TK_PR_CONST type TK_IDENTIFICADOR ',' function_params_list { 
+        node *id_node = create_leaf_type($3, $2); 
+        $$ = add_child(id_node, $5);
+    }
+  | type TK_IDENTIFICADOR { $$ = create_leaf_type($2, $1); }
+  | TK_PR_CONST type TK_IDENTIFICADOR { $$ = create_leaf_type($3, $2); };  
 
 function_body: statement_block;
 
 // Lista de comandos da linguagem
 statement_block:
     '{' '}' { $$ = NULL; }
-  | '{' statement_list '}' { 
-        $$ = $2;
-        if ($$ != NULL && $$->type != BLOCK_END_MARK_T) {
-            $$->type = BLOCK_START_MARK_T; 
+  | '{' { enter_scope(); } statement_list '}' { 
+        $$ = $3;
+        if ($$ != NULL && $$->mark != BLOCK_END_MARK_T) {
+            $$->mark = BLOCK_START_MARK_T; 
         }
+        exit_scope();
   };
     
 statement_list:
@@ -157,7 +179,7 @@ statement_list:
   | statement {
         $$ = $1;
         if ($$ != NULL) {
-            $$->type = BLOCK_END_MARK_T;
+            $$->mark = BLOCK_END_MARK_T;
         }
     };
 
@@ -174,14 +196,29 @@ statement:
 
 // Declaração de variáveis locais
 local_decl:
-    TK_PR_STATIC type local_decl_list { $$ = process_local_desc($3); }
-  | TK_PR_CONST type local_decl_list { $$ = process_local_desc($3); }
-  | TK_PR_STATIC TK_PR_CONST type local_decl_list { $$ = process_local_desc($4); }
-  | type local_decl_list { $$ = process_local_desc($2); } ;
+    TK_PR_STATIC type local_decl_list { 
+        ident_var_array_local_decl_list($2, 1, 0, $3);
+        $$ = process_local_desc($3); 
+    }
+  | TK_PR_CONST type local_decl_list { 
+        ident_var_array_local_decl_list($2, 0, 1, $3);
+        $$ = process_local_desc($3); 
+    }
+  | TK_PR_STATIC TK_PR_CONST type local_decl_list { 
+        ident_var_array_local_decl_list($3, 1, 1, $4);
+        $$ = process_local_desc($4);
+    }
+  | type local_decl_list { 
+        ident_var_array_local_decl_list($1, 0, 0, $2);
+        $$ = process_local_desc($2); 
+    };
 
 local_decl_list:
-    TK_IDENTIFICADOR ',' local_decl_list { $$ = $3; free($1); }
-  | TK_IDENTIFICADOR { $$ = NULL; free($1); }
+    TK_IDENTIFICADOR ',' local_decl_list { 
+        node *id_node = create_leaf_var_decl($1); 
+        $$ = add_child(id_node, $3);
+    }
+  | TK_IDENTIFICADOR { $$ = create_leaf_var_decl($1);  }
   | TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list { 
         free($2);
         node *id_node = create_leaf_id($1); 
@@ -393,11 +430,11 @@ literal:
 
 // Declaração de tipos      
 type: 
-    TK_PR_INT
-  | TK_PR_FLOAT 
-  | TK_PR_BOOL  
-  | TK_PR_CHAR 
-  | TK_PR_STRING ;
+    TK_PR_INT { $$ = DT_INTEGER; }
+  | TK_PR_FLOAT { $$ = DT_FLOAT; }
+  | TK_PR_BOOL { $$ = DT_BOOL; }
+  | TK_PR_CHAR { $$ = DT_CHAR; }
+  | TK_PR_STRING { $$ = DT_STRING; };
 
 %%
 
