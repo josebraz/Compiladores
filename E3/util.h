@@ -41,22 +41,4 @@ void print_tree_labels(void *arvore);
  */
 void free_node(node *n);
 
-/**
- * Lida com a lista declaração de variável local 
- * 
- * @param n 
- * @return node* o nodo recebido
- */
-node *process_local_desc(node *n);
-
-/**
- * Lida com a lista de comandos, tratando as questões de 
- * bloco de comandos e lista de decalarações de variáveis locais
- * 
- * @param head comando atual que está sendo captado pelo bison
- * @param back comandos que o bison já processou e passou por essa função
- * @return node* o comando mais acima válido (não nulo)
- */
-node *process_stmt_list(node *head, node *back);
-
 #endif

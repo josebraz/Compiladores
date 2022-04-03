@@ -5,6 +5,18 @@
 
 #include "types.h"
 
+void asp_scope_clear();
+
+void asp_scope_completed(node *start_node);
+
+void asp_scope_end(node *end_node);
+
+node *asp_stmt_list(node *head, node *tail);
+
+void asp_last_list_item(node *last_node);
+
+node *asp_list_complete(node *head, node *tail);
+
 /**
  * adiciona um filho ao pai
  * 

@@ -8,6 +8,100 @@
 #include "asp.h"
 #include "types.h"
 
+node *inner_scope_start = NULL;
+node *inner_scope_last_start = NULL;
+node *inner_scope_end = NULL;
+node *inner_scope_last_end = NULL;
+
+node* last_list_item[10];
+last_index = 0;
+
+void asp_scope_clear() {
+    inner_scope_start = NULL;
+    inner_scope_last_start = NULL;
+    inner_scope_end = NULL;
+    inner_scope_last_end = NULL;
+}
+
+void asp_scope_completed(node *start_node) {
+    inner_scope_last_start = inner_scope_start;
+    inner_scope_start = start_node;
+    printf("# asp_scope_completed start: %s ", start_node->label);
+    if (inner_scope_last_start != NULL) {
+        printf("last start %s", inner_scope_last_start->label);
+    }
+    printf("\n");
+}
+
+void asp_scope_end(node *end_node) {
+    if (inner_scope_end != inner_scope_last_start) {
+        inner_scope_last_end = inner_scope_end;
+    }
+    inner_scope_end = end_node;
+    printf("# asp_scope_end end: %s ", end_node->label);
+    if (inner_scope_last_end != NULL) {
+        printf("last end %s", inner_scope_last_end->label);
+    }
+    printf("\n");
+}
+
+node *asp_stmt_list(node *head, node *tail) {
+    printf("# asp_stmt_list - ");
+    if (head != NULL) {
+        printf("HEAD %s ", head->label);
+    } else {
+        printf("HEAD NULL ");
+    }
+    if (tail != NULL) {
+        printf("TAIL %s", tail->label);
+    } else {
+        printf("TAIL NULL");
+    }
+    printf("\n");
+
+    if (head == NULL) return tail;
+    
+    if (head == inner_scope_start && inner_scope_last_end != NULL) {
+        add_child(inner_scope_last_end, tail);
+    } else {
+        if (head == inner_scope_last_start) {
+            printf("# add_child(inner_scope_last_end, tail)\n");
+            add_child(inner_scope_last_end, tail);
+        } else {
+            add_child(head, tail);
+        }
+    }
+    return head;
+}
+
+void asp_last_list_item(node *last_node) {
+    printf("# asp_last_list_item\n");
+    last_list_item[last_index++] = last_node;
+}
+
+node *asp_list_complete(node *head, node *tail) {
+    printf("# asp_list_complete next\n");
+    
+    node *item = NULL;
+    if (last_index > 0) {
+        item = last_list_item[last_index];
+        if (tail == item) {
+            return;
+        }
+        last_index--;
+    }
+
+    print_tree_labels(head);
+    printf("\n");
+    print_tree_labels(tail);
+    printf("\n");
+    print_tree_labels(item);
+    printf("\n");
+
+    add_child(tail, item);
+    return head;
+}
+
 int remove_child(node *parent, node *to_remove) {
     int fold = 0;
     int i, j;

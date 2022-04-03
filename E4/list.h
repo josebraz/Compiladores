@@ -18,6 +18,4 @@ void list_add_index(list_t* l, int index, list_entry_t* entry);
 
 list_entry_t *list_get(list_t* l, int index);
 
-void list_print(list_t* l);
-
 #endif

@@ -30,7 +30,7 @@ void print_tree_labels(void *arvore) {
     
     if (n == NULL) return;
     
-    printf("%p [label=\"%s\"];\n", n, n->label);
+    printf("# %p [label=\"%s\"];\n", n, n->label);
     
     for (i = 0; i < n->size; i++) {
         print_tree_labels(n->nodes[i]);
@@ -65,7 +65,7 @@ void generate_dot(void *arvore) {
 void exporta(void *arvore) {
     // print_tree_children(arvore);
     // print_tree_labels(arvore);
-    // generate_dot(arvore);
+    generate_dot(arvore);
 
     print_stack();
 }
@@ -76,33 +76,6 @@ void free_node(node *n) {
         if (n->label != NULL) free(n->label);
         if (n->nodes != NULL) free(n->nodes);
         free(n);
-    }
-}
-
-node *process_local_desc(node *n) {
-    if (n != NULL) {
-        if (n->mark != BLOCK_END_MARK_T) {
-            n->mark = BLOCK_START_MARK_T; 
-        } else {
-            n->mark = STMT_T;
-        }
-    }
-    return n;
-}
-
-node *process_stmt_list(node *head, node *back) {
-    if (head != NULL) {
-        if (head->mark == BLOCK_START_MARK_T) {
-            node *tail = find_last_node_of_type(head, BLOCK_END_MARK_T);
-            add_child(tail, back);
-            head->mark = STMT_T;
-            tail->mark = STMT_T;
-        } else {
-            add_child(head, back);
-        }
-        return head;
-    } else {
-        return back;
     }
 }
 

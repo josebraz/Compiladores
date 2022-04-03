@@ -8,6 +8,68 @@
 #include "asp.h"
 #include "types.h"
 
+node *inner_scope_start = NULL;
+node *inner_scope_last_start = NULL;
+node *inner_scope_end = NULL;
+node *inner_scope_last_end = NULL;
+
+void asp_scope_clear() {
+    inner_scope_start = NULL;
+    inner_scope_last_start = NULL;
+    inner_scope_end = NULL;
+    inner_scope_last_end = NULL;
+}
+
+void asp_scope_completed(node *start_node) {
+    inner_scope_last_start = inner_scope_start;
+    inner_scope_start = start_node;
+    // printf("# asp_scope_completed start: %s ", start_node->label);
+    // if (inner_scope_last_start != NULL) {
+    //     printf("last start %s", inner_scope_last_start->label);
+    // }
+    // printf("\n");
+}
+
+void asp_scope_end(node *end_node) {
+    if (inner_scope_end != inner_scope_last_start) {
+        inner_scope_last_end = inner_scope_end;
+    }
+    inner_scope_end = end_node;
+    // printf("# asp_scope_end end: %s ", end_node->label);
+    // if (inner_scope_last_end != NULL) {
+    //     printf("last end %s", inner_scope_last_end->label);
+    // }
+    // printf("\n");
+}
+
+node *asp_stmt_list(node *head, node *tail) {
+    // printf("# asp_stmt_list - ");
+    // if (head != NULL) {
+    //     printf("HEAD %s ", head->label);
+    // } else {
+    //     printf("HEAD NULL ");
+    // }
+    // if (tail != NULL) {
+    //     printf("TAIL %s", tail->label);
+    // } else {
+    //     printf("TAIL NULL");
+    // }
+    // printf("\n");
+
+    if (head == NULL) return tail;
+    
+    if (head == inner_scope_start && inner_scope_last_end != NULL) {
+        add_child(inner_scope_last_end, tail);
+    } else {
+        if (head == inner_scope_last_start) {
+            add_child(inner_scope_last_end, tail);
+        } else {
+            add_child(head, tail);
+        }
+    }
+    return head;
+}
+
 node *next_node(node *parent) {
     if (parent->nodes != NULL) {
         return parent->nodes[parent->size-1];
@@ -185,16 +247,10 @@ node* create_leaf_type(char *ident, enum data_type type) {
     return leaf;
 }
 
-node* create_leaf_var_decl(char *ident) {
-    node *leaf = create_leaf((void *) ident, strdup(ident));
-    leaf->mark = DECL_VAR_T;
-    return leaf;
-}
-
 node* create_node_array_decl(char *ident, int size) {
     node *id_node = create_leaf_id(ident);
     node *size_node = create_leaf_int(size); 
-    return create_node("[]", DECL_ARRAY_T, 2, id_node, size_node);
+    return create_node("[]", ARRAY_T, 2, id_node, size_node);
 }
 
 node* create_leaf_int(int value) {
@@ -202,7 +258,9 @@ node* create_leaf_int(int value) {
     sprintf(label, "%d", value);
     int *value_ref = malloc(sizeof(int));
     *value_ref = value;
-    return create_leaf((void *) value_ref, label);
+    node *id =  create_leaf((void *) value_ref, label);
+    id->type = DT_INTEGER;
+    return id;
 }
 
 node* create_leaf_char(char value) {
@@ -211,7 +269,9 @@ node* create_leaf_char(char value) {
     label[1] = '\0';
     char *value_ref = malloc(sizeof(char));
     *value_ref = value;
-    return create_leaf((void *) value_ref, label);
+    node *id = create_leaf((void *) value_ref, label);
+    id->type = DT_CHAR;
+    return id;
 }
 
 node* create_leaf_float(float value) {
@@ -219,21 +279,35 @@ node* create_leaf_float(float value) {
     sprintf(label, "%f", value);
     float *value_ref = malloc(sizeof(float));
     *value_ref = value;
-    return create_leaf((void *) value_ref, label);
+    node *id = create_leaf((void *) value_ref, label);
+    id->type = DT_FLOAT;
+    return id;
 }
 
 node* create_leaf_bool(int value, char* label) {
     int *value_ref = malloc(sizeof(int));
     *value_ref = value;
-    return create_leaf((void *) value_ref, strdup(label));
+    node *id = create_leaf((void *) value_ref, strdup(label));
+    id->type = DT_BOOL;
+    return id;
 }
 
 node* create_leaf_id(char *value) {
-    return create_leaf((void *) value, strdup(value));
+    node *id = create_leaf((void *) value, strdup(value));
+    id->mark = VAR_T;
+    return id;
+}
+
+node* create_leaf_decl_var(char *value) {
+    node *id = create_leaf((void *) value, strdup(value));
+    id->mark = DECL_VAR_T;
+    return id;
 }
 
 node* create_leaf_string(char *value) {
-    return create_leaf((void *) value, strdup(value));
+    node *id = create_leaf((void *) value, strdup(value));
+    id->type = DT_STRING;
+    return id;
 }
 
 node* create_leaf_fun_call(char *value, node* params) {
@@ -242,6 +316,7 @@ node* create_leaf_fun_call(char *value, node* params) {
     strcat(label, value);
     node *leaf = create_leaf((void *) value, label);
     add_child(leaf, params);
+    leaf->mark = FUN_CALL_T;
     return leaf;
 }
 

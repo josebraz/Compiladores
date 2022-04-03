@@ -1,9 +1,20 @@
 
-int a, b, c, d[10];
+int a, b, d[10];
+bool c[5];
 
-int test(int x, int y, int z) {
+int aaaa(int v, float m) {
+    int a <= 6946; 
+}
+
+float test(int x, int y, int z) {
     int a <= 5;
-    int b <= 20;
-    int c <= 50;
-    // string aaa <= "vsvsvsd";
+    int a;
+    aaaa(a, 55.5);
+
+    c[4+0] = 8;
+    float b;
+    output a;
+    output b;
+
+    return 5.5;
 }

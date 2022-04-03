@@ -10,10 +10,10 @@ enum node_mark {
     EXPRES_T = 1,           // Nodo do tipo expressão
     LITERAL_T = 2,          // Nodo do tipo literal (folha)
     ARRAY_T = 3,            // Node do tipo array
-    DECL_VAR_T = 4,
-    DECL_ARRAY_T = 5,
-    BLOCK_START_MARK_T = 6, // Marcador de início de bloco/lista
-    BLOCK_END_MARK_T = 7    // Marcador de final de bloco/lista
+    VAR_T = 4,
+    DECL_VAR_INIT_T = 5,
+    DECL_VAR_T = 6,
+    FUN_CALL_T = 7
 };
 
 enum data_type {
@@ -108,6 +108,7 @@ typedef struct __hashmap {
     int size;
     int actual_capacity;
     hashmap_entry_t **values;
+    char *label;  // um identificador do escopo
 } hashmap_t;
 
 typedef hashmap_t stack_entry_t;

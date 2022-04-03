@@ -73,14 +73,3 @@ list_entry_t *list_get(list_t* l, int index) {
         return NULL;
     }
 }
-
-void list_print(list_t* l) {
-    printf("[");
-    for (int i = 0; i < l->size - 1; i++) {
-        printf("%s, ", l->entries[i]->ident);
-    }
-    if (l->size > 0) {
-        printf("%s", l->entries[l->size-1]->ident);
-    }
-    printf("]");
-}

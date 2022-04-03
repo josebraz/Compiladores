@@ -140,24 +140,30 @@ function_params_list:
   | type TK_IDENTIFICADOR { free($2); }
   | TK_PR_CONST type TK_IDENTIFICADOR { free($3); };  
 
-function_body: statement_block;
+function_body: statement_block { asp_scope_clear(); };
 
 // Lista de comandos da linguagem
 statement_block:
     '{' '}' { $$ = NULL; }
   | '{' statement_list '}' { 
         $$ = $2;
-        if ($$ != NULL && $$->type != BLOCK_END_MARK_T) {
-            $$->type = BLOCK_START_MARK_T; 
+        if ($$ != NULL) {
+          asp_scope_completed($$);
         }
   };
     
 statement_list:
-    statement statement_list { $$ = process_stmt_list($1, $2); } 
+    statement statement_list { 
+        if ($2->type == DECL_T) {
+          $$ = asp_list_complete($1, $2);
+        } else {
+          $$ = asp_stmt_list($1, $2); 
+        }
+    } 
   | statement {
         $$ = $1;
         if ($$ != NULL) {
-            $$->type = BLOCK_END_MARK_T;
+          asp_scope_end($$);
         }
     };
 
@@ -174,10 +180,10 @@ statement:
 
 // Declaração de variáveis locais
 local_decl:
-    TK_PR_STATIC type local_decl_list { $$ = process_local_desc($3); }
-  | TK_PR_CONST type local_decl_list { $$ = process_local_desc($3); }
-  | TK_PR_STATIC TK_PR_CONST type local_decl_list { $$ = process_local_desc($4); }
-  | type local_decl_list { $$ = process_local_desc($2); } ;
+    TK_PR_STATIC type local_decl_list { $$ = $3; }
+  | TK_PR_CONST type local_decl_list { $$ = $3; }
+  | TK_PR_STATIC TK_PR_CONST type local_decl_list { $$ = $4; }
+  | type local_decl_list { $$ = $2; } ;
 
 local_decl_list:
     TK_IDENTIFICADOR ',' local_decl_list { $$ = $3; free($1); }
@@ -186,9 +192,10 @@ local_decl_list:
         free($2);
         node *id_node = create_leaf_id($1); 
         if ($5 == NULL) {
-            $$ = create_node("<=", BLOCK_END_MARK_T, 2, id_node, $3); 
+            $$ = create_node("<=", DECL_T, 2, id_node, $3); 
+            asp_last_list_item($$);
         } else {
-            $$ = create_node("<=", STMT_T, 3, id_node, $3, $5); 
+            $$ = create_node("<=", DECL_T, 3, id_node, $3, $5); 
         }
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list { 
@@ -196,21 +203,24 @@ local_decl_list:
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
         if ($5 == NULL) {
-            $$ = create_node("<=", BLOCK_END_MARK_T, 2, dest_node, source_node); 
+            $$ = create_node("<=", DECL_T, 2, dest_node, source_node); 
+            asp_last_list_item($$);
         } else {
-            $$ = create_node("<=", STMT_T, 3, dest_node, source_node, $5); 
+            $$ = create_node("<=", DECL_T, 3, dest_node, source_node, $5); 
         }
     } 
   | TK_IDENTIFICADOR TK_OC_LE literal { 
         free($2);
         node *id_node = create_leaf_id($1); 
-        $$ = create_node("<=", BLOCK_END_MARK_T, 2, id_node, $3); 
+        $$ = create_node("<=", DECL_T, 2, id_node, $3); 
+        asp_last_list_item($$);
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR { 
         free($2);
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
-        $$ = create_node("<=", BLOCK_END_MARK_T, 2, dest_node, source_node);  
+        $$ = create_node("<=", DECL_T, 2, dest_node, source_node);  
+        asp_last_list_item($$);
     };
 
 // Comando de atribuição (depois de declarar)

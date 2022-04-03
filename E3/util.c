@@ -75,33 +75,6 @@ void free_node(node *n) {
     }
 }
 
-node *process_local_desc(node *n) {
-    if (n != NULL) {
-        if (n->type != BLOCK_END_MARK_T) {
-            n->type = BLOCK_START_MARK_T; 
-        } else {
-            n->type = STMT_T;
-        }
-    }
-    return n;
-}
-
-node *process_stmt_list(node *head, node *back) {
-    if (head != NULL) {
-        if (head->type == BLOCK_START_MARK_T) {
-            node *tail = find_last_node_of_type(head, BLOCK_END_MARK_T);
-            add_child(tail, back);
-            head->type = STMT_T;
-            tail->type = STMT_T;
-        } else {
-            add_child(head, back);
-        }
-        return head;
-    } else {
-        return back;
-    }
-}
-
 void libera(void *arvore) {
     int i;
     node *n = (node *) arvore;

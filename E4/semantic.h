@@ -9,7 +9,7 @@ static stack_t* scope_stack = NULL;
 
 void semantic_init();
 
-void enter_scope();
+void enter_scope(char *label);
 
 void exit_scope();
 
@@ -89,7 +89,7 @@ void ident_fun_declaration(
  * 
  * @param ident nome da variável
  */
-void ident_var_use(char *ident);
+hashmap_value_t *ident_var_use(char *ident);
 
 /**
  * Verifica o uso do vetor ident. Caso seu uso seja
@@ -99,7 +99,7 @@ void ident_var_use(char *ident);
  * 
  * @param ident nome do vetor
  */
-void ident_vector_use(char *ident);
+hashmap_value_t *ident_vector_use(char *ident, node *index);
 
 /**
  * Verifica o uso da função ident. Caso seu uso seja
@@ -110,7 +110,7 @@ void ident_vector_use(char *ident);
  * Verifica se os arumentos informados batem com os
  * argumentos da declaração dessa função, caso a lista
  * informada seja menor, lança um #ERR_MISSING_ARGS;
- * caso seja maior, lança #ERR_MISSING_ARGS.
+ * caso seja maior, lança #ERR_EXCESS_ARGS.
  * 
  * Se a quantidade for correta, mas os tipos estiveram
  * errados lança um #ERR_WRONG_TYPE_ARGS.
@@ -135,7 +135,7 @@ void ident_fun_use(char *ident, node *params);
 void ident_var_set(char *ident, node *value);
 
 /**
- * Verifica o comando de atribuição de variável.
+ * Verifica o comando de atribuição de um vetor.
  * 
  * Se a expressão value avaliar para um tipo que que não
  * da para converter implicitamente para o tipo de ident,
@@ -146,6 +146,59 @@ void ident_var_set(char *ident, node *value);
  * @param value expressão do novo valor
  */
 void ident_vector_set(char *ident, node *index, node *value);
+
+/**
+ * Verifica se o identificador usado é do tipo 
+ * int ou float, caso contrário lança #ERR_WRONG_PAR_INPUT
+ * 
+ * @param ident 
+ */
+void verify_input_use(node *ident);
+
+/**
+ * Verifica se o identificador ou literal é do 
+ * tipo int ou float, caso contrário lança #ERR_WRONG_PAR_OUTPUT
+ * 
+ * @param ident_or_literal 
+ */
+void verify_output_use(node *ident_or_literal);
+
+/**
+ * Verifica se o retorno é compatível com o retorno
+ * da função, caso contrário lança #ERR_WRONG_PAR_RETURN
+ * 
+ * @param expression 
+ */
+void verify_return(node *expression);
+
+/**
+ * Verifica se o parametro do comando shift não ultrapassa
+ * o número 16, caso seja lança #ERR_WRONG_PAR_SHIFT
+ * 
+ * @param p 
+ */
+void verify_shift(int p);
+
+/**
+ * Verifica se pode converter implicitamente de um tipo 
+ * source para um dest.
+ * 
+ * @param source tipo de origem
+ * @param dest tipo de destino
+ * @return int 1 se é possível, 0 caso contrário
+ */
+int can_implicit_conversion(enum data_type source, enum data_type dest);
+
+/**
+ * Procura a entrada na tabela correspondente ao identificador
+ * procurando recursivamente nos escopos mais internos
+ * até os mais externos até o global.
+ * Se não achar, lança o erro ERR_UNDECLARED
+ * 
+ * @param ident 
+ * @return enum data_type 
+ */
+hashmap_value_t *find_declaration(char *ident);
 
 /**
  * Infere o tipo de uma expressão root.

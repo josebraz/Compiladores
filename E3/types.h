@@ -8,8 +8,7 @@ enum node_type {
     EXPRES_T = 1,           // Nodo do tipo expressão
     LITERAL_T = 2,          // Nodo do tipo literal (folha)
     ARRAY_T = 3,            // Node do tipo array
-    BLOCK_START_MARK_T = 4, // Marcador de início de bloco/lista
-    BLOCK_END_MARK_T = 5    // Marcador de final de bloco/lista
+    DECL_T = 4
 };
 
 /**

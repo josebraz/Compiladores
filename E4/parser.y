@@ -117,14 +117,16 @@ s : prog { arvore = $1; };
 // declarações de funções, também é aceito uma linguagem vazia 
 prog : 
     global_decl prog { $$ = $2; }
-  | type TK_IDENTIFICADOR function_params function_body prog { 
+  | type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($2, $1, $3);
-        $$ = create_node_function($2, $4, $5); 
-    }       
-  | TK_PR_STATIC type TK_IDENTIFICADOR function_params function_body prog { 
+        enter_scope($2);
+        asp_scope_clear();
+    } function_body prog { $$ = create_node_function($2, $5, $6); }
+  | TK_PR_STATIC type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($3, $2, $4);
-        $$ = create_node_function($3, $5, $6); 
-    }   
+        enter_scope($3);
+        asp_scope_clear();
+    } function_body prog { $$ = create_node_function($3, $6, $7);  }
   | { $$ = NULL; };
 
 // Declaração de variáveis globais
@@ -134,14 +136,14 @@ global_decl :
 
 global_decl_list : 
     TK_IDENTIFICADOR ',' global_decl_list {
-        node *id_node = create_leaf_var_decl($1); 
+        node *id_node = create_leaf_id($1); 
         $$ = add_child(id_node, $3);
     }
   | TK_IDENTIFICADOR '[' TK_LIT_INT ']' ',' global_decl_list {
         node *array_node = create_node_array_decl($1, $3);
         $$ = add_child(array_node, $6);
   }
-  | TK_IDENTIFICADOR { $$ = create_leaf_var_decl($1); }
+  | TK_IDENTIFICADOR { $$ = create_leaf_id($1); }
   | TK_IDENTIFICADOR '[' TK_LIT_INT ']' { $$ = create_node_array_decl($1, $3); };
 
 // Declaração das funções        
@@ -161,25 +163,33 @@ function_params_list:
   | type TK_IDENTIFICADOR { $$ = create_leaf_type($2, $1); }
   | TK_PR_CONST type TK_IDENTIFICADOR { $$ = create_leaf_type($3, $2); };  
 
-function_body: statement_block;
+function_body: 
+    '{' '}' { $$ = NULL; }
+  | '{' statement_list '}' { 
+        $$ = $2;
+        if ($$ != NULL) {
+          asp_scope_completed($$);
+        }
+        exit_scope();
+  };
 
 // Lista de comandos da linguagem
 statement_block:
     '{' '}' { $$ = NULL; }
-  | '{' { enter_scope(); } statement_list '}' { 
+  | '{' { enter_scope("local"); } statement_list '}' { 
         $$ = $3;
-        if ($$ != NULL && $$->mark != BLOCK_END_MARK_T) {
-            $$->mark = BLOCK_START_MARK_T; 
+        if ($$ != NULL) {
+          asp_scope_completed($$);
         }
         exit_scope();
   };
     
 statement_list:
-    statement statement_list { $$ = process_stmt_list($1, $2); } 
+    statement statement_list { $$ = asp_stmt_list($1, $2); } 
   | statement {
         $$ = $1;
         if ($$ != NULL) {
-            $$->mark = BLOCK_END_MARK_T;
+          asp_scope_end($$);
         }
     };
 
@@ -198,34 +208,34 @@ statement:
 local_decl:
     TK_PR_STATIC type local_decl_list { 
         ident_var_array_local_decl_list($2, 1, 0, $3);
-        $$ = process_local_desc($3); 
+        $$ = $3; 
     }
   | TK_PR_CONST type local_decl_list { 
         ident_var_array_local_decl_list($2, 0, 1, $3);
-        $$ = process_local_desc($3); 
+        $$ = $3; 
     }
   | TK_PR_STATIC TK_PR_CONST type local_decl_list { 
         ident_var_array_local_decl_list($3, 1, 1, $4);
-        $$ = process_local_desc($4);
+        $$ = $4;
     }
   | type local_decl_list { 
         ident_var_array_local_decl_list($1, 0, 0, $2);
-        $$ = process_local_desc($2); 
+        $$ = $2; 
     };
 
 local_decl_list:
     TK_IDENTIFICADOR ',' local_decl_list { 
-        node *id_node = create_leaf_var_decl($1); 
+        node *id_node = create_leaf_decl_var($1); 
         $$ = add_child(id_node, $3);
     }
-  | TK_IDENTIFICADOR { $$ = create_leaf_var_decl($1);  }
+  | TK_IDENTIFICADOR { $$ = create_leaf_decl_var($1);  }
   | TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list { 
         free($2);
         node *id_node = create_leaf_id($1); 
         if ($5 == NULL) {
-            $$ = create_node("<=", BLOCK_END_MARK_T, 2, id_node, $3); 
+            $$ = create_node("<=", DECL_VAR_INIT_T, 2, id_node, $3); 
         } else {
-            $$ = create_node("<=", STMT_T, 3, id_node, $3, $5); 
+            $$ = create_node("<=", DECL_VAR_INIT_T, 3, id_node, $3, $5); 
         }
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list { 
@@ -233,21 +243,21 @@ local_decl_list:
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
         if ($5 == NULL) {
-            $$ = create_node("<=", BLOCK_END_MARK_T, 2, dest_node, source_node); 
+            $$ = create_node("<=", DECL_VAR_INIT_T, 2, dest_node, source_node); 
         } else {
-            $$ = create_node("<=", STMT_T, 3, dest_node, source_node, $5); 
+            $$ = create_node("<=", DECL_VAR_INIT_T, 3, dest_node, source_node, $5); 
         }
     } 
   | TK_IDENTIFICADOR TK_OC_LE literal { 
         free($2);
         node *id_node = create_leaf_id($1); 
-        $$ = create_node("<=", BLOCK_END_MARK_T, 2, id_node, $3); 
+        $$ = create_node("<=", DECL_VAR_INIT_T, 2, id_node, $3); 
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR { 
         free($2);
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
-        $$ = create_node("<=", BLOCK_END_MARK_T, 2, dest_node, source_node);  
+        $$ = create_node("<=", DECL_VAR_INIT_T, 2, dest_node, source_node);  
     };
 
 // Comando de atribuição (depois de declarar)
@@ -255,11 +265,13 @@ assignment:
     TK_IDENTIFICADOR '=' expression { 
         node *id_node = create_leaf_id($1); 
         $$ = create_node("=", STMT_T, 2, id_node, $3); 
+        ident_var_set($1, $3);
     } 
   | TK_IDENTIFICADOR '[' expression ']' '=' expression { 
         node *id_node = create_leaf_id($1); 
         node *index_node = create_node("[]", ARRAY_T, 2, id_node, $3);
         $$ = create_node("=", STMT_T, 2, index_node, $6); 
+        ident_vector_set($1, $3, $6);
     } ;
 
 // Operadores de entrada e saída    
@@ -267,18 +279,24 @@ in_out:
     TK_PR_INPUT TK_IDENTIFICADOR { 
         node *id_node = create_leaf_id($2);
         $$ = create_node("input", STMT_T, 1, id_node); 
+        verify_input_use(id_node);
     }
   | TK_PR_OUTPUT TK_IDENTIFICADOR { 
         node *id_node = create_leaf_id($2);
         $$ = create_node("output", STMT_T, 1, id_node); 
+        verify_output_use(id_node);
     }
-  | TK_PR_OUTPUT literal {  $$ = create_node("output", STMT_T, 1, $2);  };
+  | TK_PR_OUTPUT literal { 
+        $$ = create_node("output", STMT_T, 1, $2);
+         verify_output_use($2); 
+    };
 
 // Chamada de uma função com 0 ou mais argumentos sepados por vígula
 function_call:
     TK_IDENTIFICADOR '(' ')' { $$ = create_leaf_fun_call($1, NULL); }
   | TK_IDENTIFICADOR '(' function_call_list ')' { 
         $$ = create_leaf_fun_call($1, $3); 
+        ident_fun_use($1, $3);
     };
 
 function_call_list:
@@ -291,6 +309,7 @@ shift:
         node *id_node = create_leaf_id($1);
         node *offset = create_leaf_int($3);
         $$ = create_node(">>", STMT_T, 2, id_node, offset); 
+        verify_shift($3);
         free($2);
     }
   | TK_IDENTIFICADOR '[' expression ']' TK_OC_SL TK_LIT_INT {
@@ -298,12 +317,15 @@ shift:
         node *index_node = create_node("[]", ARRAY_T, 2, id_node, $3);
         node *offset = create_leaf_int($6);
         $$ = create_node(">>", STMT_T, 2, index_node, offset); 
+        verify_shift($6);
+        ident_vector_use($1, $3);
         free($5);
   }
   | TK_IDENTIFICADOR TK_OC_SR TK_LIT_INT {
         node *id_node = create_leaf_id($1);
         node *offset = create_leaf_int($3);
         $$ = create_node("<<", STMT_T, 2, id_node, offset); 
+        verify_shift($3);
         free($2);
     }
   | TK_IDENTIFICADOR '[' expression ']' TK_OC_SR TK_LIT_INT {
@@ -311,6 +333,8 @@ shift:
         node *index_node = create_node("[]", ARRAY_T, 2, id_node, $3);
         node *offset = create_leaf_int($6);
         $$ = create_node("<<", STMT_T, 2, index_node, offset); 
+        verify_shift($6);
+        ident_vector_use($1, $3);
         free($5);
   };
 
@@ -340,7 +364,10 @@ control_while:
     };
 
 control_jump:
-    TK_PR_RETURN expression { $$ = create_node("return", STMT_T, 1, $2); }
+    TK_PR_RETURN expression { 
+        $$ = create_node("return", STMT_T, 1, $2); 
+        verify_return($2);
+    }
   | TK_PR_BREAK { $$ = create_node("break", STMT_T, 0); }
   | TK_PR_CONTINUE { $$ = create_node("continue", STMT_T, 0); }
 
@@ -411,11 +438,17 @@ expression0:
 
 // Operandos da linguagem com suporte a array    
 operand:
-    TK_IDENTIFICADOR { $$ = create_leaf_id($1); } 
+    TK_IDENTIFICADOR { 
+        $$ = create_leaf_id($1); 
+        ident_var_use($1);
+    } 
   | TK_LIT_INT { $$ = create_leaf_int($1); } 
   | TK_LIT_FLOAT { $$ = create_leaf_float($1); } 
   | function_call
-  | TK_IDENTIFICADOR '[' expression ']' { $$ = create_node_id_array($1, $3); } ;
+  | TK_IDENTIFICADOR '[' expression ']' { 
+        $$ = create_node_id_array($1, $3); 
+        ident_vector_use($1, $3);
+    } ;
 
 
 // Literais da linguagem

@@ -5,6 +5,14 @@
 
 #include "types.h"
 
+void asp_scope_clear();
+
+void asp_scope_completed(node *start_node);
+
+void asp_scope_end(node *end_node);
+
+node *asp_stmt_list(node *head, node *tail);
+
 node *next_node(node *parent);
 
 /**
@@ -121,8 +129,6 @@ node* create_leaf(void *value, char* label);
  */
 node* create_leaf_type(char *ident, enum data_type type);
 
-node* create_leaf_var_decl(char *ident);
-
 node* create_node_array_decl(char *ident, int size);
 
 /**
@@ -165,6 +171,8 @@ node* create_leaf_bool(int value, char* label);
  * @return node* a nova folha criada
  */
 node* create_leaf_id(char *value);
+
+node* create_leaf_decl_var(char *value);
 
 /**
  * Cria uma nova folha do tipo string

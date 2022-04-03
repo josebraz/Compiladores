@@ -6,7 +6,7 @@
 
 #include "hashmap.h"
 
-hashmap_t* hashmap_init() {
+hashmap_t* hashmap_init(char *label) {
     hashmap_t* hashmap = (hashmap_t *) malloc(sizeof(hashmap_t));
 
     if (hashmap == NULL) {
@@ -17,6 +17,7 @@ hashmap_t* hashmap_init() {
     hashmap->size = 0;
     hashmap->actual_capacity = HASHMAP_INITIAL_CAPACITY;
     hashmap->values = (hashmap_entry_t **) calloc(HASHMAP_INITIAL_CAPACITY, sizeof(hashmap_entry_t*));
+    hashmap->label = strdup(label);
 
     if (hashmap->values == NULL) {
         perror("Não foi possivel alocar memória inicial para as entradas da tabela!");
