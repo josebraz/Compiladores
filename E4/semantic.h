@@ -27,6 +27,14 @@ void ident_var_array_local_decl_list(
 );
 
 /**
+ * Adiciona um literal na tabela global para ser compartilhado
+ * em diferentes local com a mesma alocação de memória
+ * 
+ * @param literal 
+ */
+void literal_use(node* literal);
+
+/**
  * Nova declaração de uma variável.
  * 
  * Verifica se já foi declarado nesse escopo, 
@@ -35,7 +43,7 @@ void ident_var_array_local_decl_list(
  * @param ident nome da variável
  * @param type tipo da variável
  */
-void ident_var_declaration(
+hashmap_value_t *ident_var_declaration(
     char *ident,
     enum data_type type,
     int is_static
@@ -69,6 +77,10 @@ void ident_vector_declaration(
  * 
  * O retorno e os paramentros não podem ser do tipo
  * string, caso forem lança um #ERR_FUNCTION_STRING
+ * 
+ * Cria um novo escopo e coloca as variáveis que são
+ * parametros dessa função na tabela de simbolos, seguindo
+ * as regras de declaração de variáveis
  * 
  * @param ident 
  * @param return_type 

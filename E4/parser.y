@@ -119,12 +119,10 @@ prog :
     global_decl prog { $$ = $2; }
   | type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($2, $1, $3);
-        enter_scope($2);
         asp_scope_clear();
     } function_body prog { $$ = create_node_function($2, $5, $6); }
   | TK_PR_STATIC type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($3, $2, $4);
-        enter_scope($3);
         asp_scope_clear();
     } function_body prog { $$ = create_node_function($3, $6, $7);  }
   | { $$ = NULL; };
@@ -208,19 +206,19 @@ statement:
 local_decl:
     TK_PR_STATIC type local_decl_list { 
         ident_var_array_local_decl_list($2, 1, 0, $3);
-        $$ = $3; 
+        $$ = remove_uninit_decl_var($3); 
     }
   | TK_PR_CONST type local_decl_list { 
         ident_var_array_local_decl_list($2, 0, 1, $3);
-        $$ = $3; 
+        $$ = remove_uninit_decl_var($3); 
     }
   | TK_PR_STATIC TK_PR_CONST type local_decl_list { 
         ident_var_array_local_decl_list($3, 1, 1, $4);
-        $$ = $4;
+        $$ = remove_uninit_decl_var($4);
     }
   | type local_decl_list { 
         ident_var_array_local_decl_list($1, 0, 0, $2);
-        $$ = $2; 
+        $$ = remove_uninit_decl_var($2); 
     };
 
 local_decl_list:
@@ -279,11 +277,13 @@ in_out:
     TK_PR_INPUT TK_IDENTIFICADOR { 
         node *id_node = create_leaf_id($2);
         $$ = create_node("input", STMT_T, 1, id_node); 
+        ident_var_use($2);
         verify_input_use(id_node);
     }
   | TK_PR_OUTPUT TK_IDENTIFICADOR { 
         node *id_node = create_leaf_id($2);
         $$ = create_node("output", STMT_T, 1, id_node); 
+        ident_var_use($2);
         verify_output_use(id_node);
     }
   | TK_PR_OUTPUT literal { 
@@ -309,6 +309,7 @@ shift:
         node *id_node = create_leaf_id($1);
         node *offset = create_leaf_int($3);
         $$ = create_node(">>", STMT_T, 2, id_node, offset); 
+        ident_var_use($1);
         verify_shift($3);
         free($2);
     }
@@ -325,6 +326,7 @@ shift:
         node *id_node = create_leaf_id($1);
         node *offset = create_leaf_int($3);
         $$ = create_node("<<", STMT_T, 2, id_node, offset); 
+        ident_var_use($1);
         verify_shift($3);
         free($2);
     }
@@ -453,12 +455,12 @@ operand:
 
 // Literais da linguagem
 literal: 
-    TK_LIT_INT { $$ = create_leaf_int($1); } 
-  | TK_LIT_FLOAT { $$ = create_leaf_float($1); } 
-  | TK_LIT_FALSE { $$ = create_leaf_bool($1, "false"); } 
-  | TK_LIT_TRUE { $$ = create_leaf_bool($1, "true"); } 
-  | TK_LIT_CHAR { $$ = create_leaf_char($1); } 
-  | TK_LIT_STRING { $$ = create_leaf_string($1); } ;
+    TK_LIT_INT { $$ = create_leaf_int($1); literal_use($$); } 
+  | TK_LIT_FLOAT { $$ = create_leaf_float($1); literal_use($$); } 
+  | TK_LIT_FALSE { $$ = create_leaf_bool($1, "false"); literal_use($$); } 
+  | TK_LIT_TRUE { $$ = create_leaf_bool($1, "true"); literal_use($$); } 
+  | TK_LIT_CHAR { $$ = create_leaf_char($1); literal_use($$); } 
+  | TK_LIT_STRING { $$ = create_leaf_string($1); literal_use($$); } ;
 
 
 // Declaração de tipos      

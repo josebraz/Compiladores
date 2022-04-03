@@ -78,6 +78,27 @@ node *next_node(node *parent) {
     }
 }
 
+node *remove_uninit_decl_var(node *n) {
+    node *root = NULL;
+    node *parent = NULL;
+    node *p = n;
+    while (p != NULL) {
+        if (p->mark == DECL_VAR_T && parent != NULL) {
+            parent->nodes[parent->size-1] = p->nodes[p->size-1];
+            free_node(p);
+        }
+        if (p->mark != DECL_VAR_T) {
+            parent = p;
+            if (root == NULL) {
+                root = p;
+            }
+        }
+        
+        p = next_node(p);
+    }
+    return root;
+}
+
 int remove_child(node *parent, node *to_remove) {
     int fold = 0;
     int i, j;

@@ -97,7 +97,7 @@ void verify_alread_declared(hashmap_t *current_scope, char *ident) {
     }
 }
 
-void ident_var_declaration(
+hashmap_value_t *ident_var_declaration(
     char *ident,
     enum data_type type,
     int is_static
@@ -109,6 +109,7 @@ void ident_var_declaration(
 
     hashmap_value_t *value = create_hashmap_value(type, NT_VARIABLE, 1, NULL);
     hashmap_put(current_scope, ident, value);
+    return value;
 }
 
 void ident_vector_declaration(
@@ -128,6 +129,20 @@ void ident_vector_declaration(
 
     hashmap_value_t *value = create_hashmap_value(type, NT_VECTOR, vector_size, NULL);
     hashmap_put(current_scope, ident, value);    
+}
+
+void literal_use(node* literal) {
+    if (literal->mark != LITERAL_T) return;
+    hashmap_t *global_scope = scope_stack->entries[0];
+    char *key = literal->label;
+    hashmap_value_t *value = hashmap_get(global_scope, key);
+    if (value == NULL) {
+        value = create_hashmap_value(literal->type, NT_LITERAL, 1, NULL);
+        if (literal->type == DT_STRING) {
+            value->men_size = strlen(key);
+        }
+        hashmap_put(global_scope, key, value);
+    }
 }
 
 void ident_var_array_local_decl_list(
@@ -150,7 +165,10 @@ void ident_var_array_local_decl_list(
             print_data_type(infered_type);
             printf("\n");
 
-            if (can_implicit_conversion(infered_type, type)) {
+            if (infered_type == type && type == DT_STRING) {
+                hashmap_value_t *value = ident_var_declaration(ident, type, is_static);
+                value->men_size = strlen((char *) p->nodes[1]->value);
+            } else if (can_implicit_conversion(infered_type, type)) {
                 ident_var_declaration(ident, type, is_static);
             } else if (type == DT_STRING) {
                 show_error_message(ERR_STRING_TO_X, "Erro ao declarar \"%s\" - Não podemos fazer coersão de string", ident);
@@ -202,6 +220,8 @@ void ident_fun_declaration(
         show_error_message(ERR_FUNCTION_STRING, "Erro ao declarar \"%s\" - String não pode ser o retorno de uma função", ident);
     }
 
+    enter_scope(ident);
+
     list_t *args = list_init();
     if (params != NULL) {
         node *p = params;
@@ -212,7 +232,12 @@ void ident_fun_declaration(
             declaration_type_t *decl = (declaration_type_t*) malloc(sizeof(declaration_type_t));
             decl->decl_type = p->type;
             decl->ident = p->label;
+            decl->is_const = 0;
+            decl->is_static = 0;
+
             list_add(args, decl);
+            ident_var_declaration(decl->ident, decl->decl_type, decl->is_static);
+
             p = next_node(p);
         }       
     }
@@ -310,12 +335,35 @@ void ident_fun_use(char *ident, node *params) {
     }
 }
 
+int get_string_size(node* value) {
+    if (value->mark == LITERAL_T && value->type == DT_STRING) {
+        return strlen((char *) value->value);
+    } else if (value->mark == VAR_T) {
+        char *ident = (char *) value->value;
+        hashmap_value_t *decl = find_declaration(ident);
+        if (decl == NULL) {
+            show_error_message(ERR_UNDECLARED, "Erro ao usar \"%s\" - Identificador não declarado anteriormente", ident);
+        }
+        if (decl->type == DT_STRING) {
+            return decl->men_size;
+        }
+    }
+    return 0;
+}
+
 void ident_var_set(char *ident, node *value) {
     printf("# ident_var_set %s\n", ident);
+
     hashmap_value_t *decl = ident_var_use(ident);
     enum data_type infered_type = infer_expression_type(value);
     if (!can_implicit_conversion(decl->type, infered_type)) {
         show_error_message(ERR_WRONG_TYPE, "Erro ao alterar \"%s\" - Tipo dos dados não são compatíveis", ident);
+    }
+    if (decl->type == DT_STRING) {
+        int new_size = get_string_size(value);
+        if (decl->men_size < new_size) {
+            show_error_message(ERR_STRING_MAX, "Erro ao alterar \"%s\" - Tamanho da string deve ser menor ou igual a %d, informado %d", ident, decl->men_size, new_size);
+        }
     }
 }
 
@@ -429,32 +477,38 @@ enum data_type infer_expression_type(node *root) {
 void hashmap_print(hashmap_t *map) {
     int fold = 0;
     int index = 0;
-    printf("#hashmap %p {\n", map);
+    printf("# hashmap %p {\n", map);
     if (map != NULL) {
         while (fold < map->size) {
             hashmap_entry_t *entry = map->values[index++];
             if (entry != NULL) {
-                printf("#\t %d [%s] ", entry->value->line, entry->key);
+                printf("#\tL: %d\t[%s]\t", entry->value->line, entry->key);
                 hashmap_value_t *value = entry->value;
                 if (value->nature == NT_FUNCTION) {
-                    printf("FUNCTION ");
+                    printf("FUNC\t");
                     list_print(value->args);
                     printf(" -> ");
                     print_data_type(value->type);
                 } else if (value->nature == NT_VARIABLE) {
-                    printf("VAR ");
+                    printf("VAR\t");
                     print_data_type(value->type);
+                    printf("\tMEN_SIZE %d", value->men_size);
                 } else if (value->nature == NT_VECTOR) {
-                    printf("ARRAY ");
+                    printf("ARRAY\t");
                     print_data_type(value->type);
                     printf("[%d]", value->men_size/size_data_type(value->type));
+                    printf("\tMEN_SIZE %d", value->men_size);
+                } else if (value->nature == NT_LITERAL) {
+                    printf("LIT\t");
+                    print_data_type(value->type);
+                    printf("\tMEN_SIZE %d", value->men_size);
                 }
                 printf("\n");
                 fold++;
             }
         }
     }
-    printf("#}\n");
+    printf("# }\n");
 }
 
 void print_stack() {

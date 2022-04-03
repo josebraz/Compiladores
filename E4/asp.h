@@ -13,6 +13,8 @@ void asp_scope_end(node *end_node);
 
 node *asp_stmt_list(node *head, node *tail);
 
+node *remove_uninit_decl_var(node *n);
+
 node *next_node(node *parent);
 
 /**
