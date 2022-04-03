@@ -25,8 +25,10 @@ stack_t* stack_init() {
 }
 
 stack_t* stack_destroy(stack_t* s) {
-    if (stack_is_empty(s) == 0) {
-        for (int i = 0; i <= s->index; i++) {
+    if (s == NULL) return NULL;
+    
+    for (int i = 0; i <= s->index; i++) {
+        if (s->entries[i] != NULL) {
             free(s->entries[i]);
         }
     }
@@ -40,7 +42,9 @@ stack_entry_t *stack_pop(stack_t *s) {
     if (stack_is_empty(s) == 1) {
         return NULL;
     } else {
-        return s->entries[s->index--];
+        stack_entry_t *entry = s->entries[s->index];
+        s->entries[s->index--] = NULL;
+        return entry;
     }
 }
 

@@ -30,55 +30,62 @@ void print_tree_labels(void *arvore) {
     
     if (n == NULL) return;
     
-    printf("# %p [label=\"%s\"];\n", n, n->label);
+    printf("%p [label=\"%s\"];\n", n, n->label);
     
     for (i = 0; i < n->size; i++) {
         print_tree_labels(n->nodes[i]);
     }
 }
 
-void generate_dot_rec(void *arvore) {
-    int i;
-    node *n = (node *) arvore;
+// void generate_dot_rec(void *arvore) {
+//     int i;
+//     node *n = (node *) arvore;
     
-    if (n == NULL) return;
+//     if (n == NULL) return;
     
-    printf("\t%ld [label=\"%s\" mark=%d]\n", n, n->label, n->mark);
+//     printf("\t%ld [label=\"%s\" mark=%d]\n", n, n->label, n->mark);
     
-    for (i = 0; i < n->size; i++) {
-        if (n->nodes[i] != NULL) {
-            printf("\t%ld -> %ld\n", n, n->nodes[i]);
-        }
-    }
-    for (i = 0; i < n->size; i++) {
-        generate_dot_rec(n->nodes[i]);
-    }
+//     for (i = 0; i < n->size; i++) {
+//         if (n->nodes[i] != NULL) {
+//             printf("\t%ld -> %ld\n", n, n->nodes[i]);
+//         }
+//     }
+//     for (i = 0; i < n->size; i++) {
+//         generate_dot_rec(n->nodes[i]);
+//     }
+// }
 
-}
-
-void generate_dot(void *arvore) {
-    printf("digraph {\n");
-    generate_dot_rec(arvore);
-    printf("}\n");
-}
+// void generate_dot(void *arvore) {
+//     printf("digraph {\n");
+//     generate_dot_rec(arvore);
+//     printf("}\n");
+// }
 
 void exporta(void *arvore) {
-    // print_tree_children(arvore);
-    // print_tree_labels(arvore);
-    generate_dot(arvore);
-
-    print_stack();
+    print_tree_children(arvore);
+    print_tree_labels(arvore);
+    // generate_dot(arvore);
+    // print_stack();
 }
 
-void libera(void *arvore) {
+void free_tree(void *arvore) {
     int i;
     node *n = (node *) arvore;
 
     if (n == NULL) return;
-
     for (i = 0; i < n->size; i++) {
-        libera(n->nodes[i]);
+        free_tree(n->nodes[i]);
     }
     
     free_node(n);
 }
+
+void libera(void *arvore) {
+    free_tree(arvore);
+    for (int i = 0; i < scope_stack->actual_capacity; i++) {
+        hashmap_destroy(scope_stack->entries[i]);
+        scope_stack->entries[i] = NULL;
+    }
+    stack_destroy(scope_stack);
+}
+

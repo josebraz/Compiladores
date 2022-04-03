@@ -7,9 +7,10 @@
 
 #define HASHMAP_INITIAL_CAPACITY 100
 #define HASHMAP_REALLOC_FACTOR 3
-#define HASHMAP_KEY_SIZE 20
 
 hashmap_t* hashmap_init(char *label);
+
+void hashmap_destroy(hashmap_t *map);
 
 int hashmap_hashcode(const char *key);
 

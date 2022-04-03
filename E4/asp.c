@@ -10,7 +10,7 @@
 
 node *asp_stmt_list(node *head, node *tail) {
     if (head == NULL) return tail;
-    if (head->size == 1) {
+    if (head->size <= 1) {
         add_child(head, tail);
     } else {
         node *last_head = find_last_node_not_leaf(head);

@@ -61,7 +61,7 @@ hashmap_value_t *create_hashmap_value(
     int mem_mult,
     list_t *args
 ) {
-    hashmap_value_t *value = (hashmap_value_t *) malloc (sizeof(hashmap_value_t));
+    hashmap_value_t *value = (hashmap_value_t *) malloc(sizeof(hashmap_value_t));
     value->line = get_line_number();
     value->nature = nature;
     value->men_size = mem_mult * size_data_type(type);
@@ -72,24 +72,20 @@ hashmap_value_t *create_hashmap_value(
 }
 
 void semantic_init() {
-    printf("# semantic_init\n");
-
     scope_stack = stack_init();
     hashmap_t* global_table = hashmap_init("global");
     stack_push(scope_stack, global_table);
 }
 
 void enter_scope(char *label) {
-    printf("# enter_scope %s\n", label);
     hashmap_t* new_table = hashmap_init(label);
     stack_push(scope_stack, new_table);
 }
 
 void exit_scope() {
-    printf("# exit_scope\n");
     hashmap_t *current_scope = stack_pop(scope_stack);
-    hashmap_print(current_scope);
-    // free(current_scope);
+    // hashmap_print(current_scope);
+    hashmap_destroy(current_scope);
 }
 
 void verify_alread_declared(hashmap_t *current_scope, char *ident) {
@@ -104,8 +100,6 @@ hashmap_value_t *ident_var_declaration(
     enum data_type type,
     int is_static
 ) {
-    printf("# ident_var_declaration %s\n", ident);
-
     hashmap_t *current_scope = stack_peek(scope_stack);
     verify_alread_declared(current_scope, ident);
 
@@ -120,8 +114,6 @@ void ident_vector_declaration(
     int is_static,
     int vector_size
 ) {
-    printf("# ident_vector_declaration\n");
-
     if (type == DT_STRING) {
         show_error_message(ERR_STRING_VECTOR, "Erro ao declarar \"%s\" - Um vetor não pode ser do tipo string", ident);
     }
@@ -153,8 +145,6 @@ void ident_var_array_local_decl_list(
     int is_const,
     node *list
 ) {
-    printf("# ident_var_array_local_decl_list\n");
-
     enum data_type infered_type;
     node *p = list;
     char *ident;
@@ -162,10 +152,6 @@ void ident_var_array_local_decl_list(
         if (p->mark == DECL_VAR_INIT_T) {
             ident = (char *) p->nodes[0]->value;
             infered_type = infer_expression_type(p->nodes[1]);
-            printf("# INFERED TYPE %s ", ident);
-            print_data_type(infered_type);
-            printf("\n");
-
             if (infered_type == type && type == DT_STRING) {
                 hashmap_value_t *value = ident_var_declaration(ident, type, is_static);
                 value->men_size = strlen((char *) p->nodes[1]->value);
@@ -193,8 +179,6 @@ void ident_var_array_global_decl_list(
     int is_static,
     node *list
 ) {
-    printf("# ident_var_array_global_decl_list\n");
-
     node *p = list;
     while (p != NULL) {
         if (p->mark == VAR_T) {
@@ -212,8 +196,6 @@ void ident_fun_declaration(
     enum data_type return_type,
     node *params
 ) {
-    printf("# ident_fun_declaration\n");
-    
     hashmap_t *current_scope = stack_peek(scope_stack);
     verify_alread_declared(current_scope, ident);
 
@@ -263,8 +245,6 @@ hashmap_value_t *find_declaration(char *ident) {
 }
 
 hashmap_value_t *ident_var_use(char *ident) {
-    printf("# ident_var_use %s\n", ident);
-
     hashmap_value_t *decl = find_declaration(ident);
     if (decl == NULL) {
         show_error_message(ERR_UNDECLARED, "Erro ao usar \"%s\" - Variável não declarada anteriormente", ident);
@@ -279,8 +259,6 @@ hashmap_value_t *ident_var_use(char *ident) {
 }
 
 hashmap_value_t *ident_vector_use(char *ident, node *index) {
-    printf("# ident_vector_use %s\n", ident);
-
     hashmap_value_t *decl = find_declaration(ident);
     if (decl == NULL) {
         show_error_message(ERR_UNDECLARED, "Erro ao usar \"%s\" - Vetor não declarado anteriormente", ident);
@@ -299,8 +277,6 @@ hashmap_value_t *ident_vector_use(char *ident, node *index) {
 }
 
 void ident_fun_use(char *ident, node *params) {
-    printf("# ident_fun_use %s\n", ident);
-
     hashmap_value_t *value = hashmap_get(scope_stack->entries[0], ident);
     if (value == NULL) {
         show_error_message(ERR_UNDECLARED, "Erro ao usar \"%s\" - Função não declarada anteriormente", ident);
@@ -353,8 +329,6 @@ int get_string_size(node* value) {
 }
 
 void ident_var_set(char *ident, node *value) {
-    printf("# ident_var_set %s\n", ident);
-
     hashmap_value_t *decl = ident_var_use(ident);
     enum data_type infered_type = infer_expression_type(value);
     if (!can_implicit_conversion(decl->type, infered_type)) {
@@ -369,7 +343,6 @@ void ident_var_set(char *ident, node *value) {
 }
 
 void ident_vector_set(char *ident, node *index, node *value) {
-    printf("# ident_vector_set %s\n", ident);
     hashmap_value_t *decl = ident_vector_use(ident, index);
     enum data_type infered_type = infer_expression_type(value);
     if (!can_implicit_conversion(decl->type, infered_type)) {
@@ -378,7 +351,6 @@ void ident_vector_set(char *ident, node *index, node *value) {
 }
 
 void verify_input_use(node *ident) {
-    printf("# verify_input_use\n");
     enum data_type infered_type = infer_expression_type(ident);
     if (infered_type != DT_FLOAT && infered_type != DT_INTEGER) {
         show_error_message(ERR_WRONG_PAR_INPUT, "Erro no input \"%s\" - O tipo do parâmetro precisa ser um int ou float", ident);
@@ -386,7 +358,6 @@ void verify_input_use(node *ident) {
 }
 
 void verify_output_use(node *ident_or_literal) {
-    printf("# verify_output_use\n");
     enum data_type infered_type = infer_expression_type(ident_or_literal);
     if (infered_type != DT_FLOAT && infered_type != DT_INTEGER) {
         show_error_message(ERR_WRONG_PAR_OUTPUT, "Erro no output \"%s\" - O tipo do parâmetro precisa ser um int ou float", ident_or_literal);
@@ -394,7 +365,6 @@ void verify_output_use(node *ident_or_literal) {
 }
 
 void verify_return(node *expression) {
-    printf("# verify_return\n");
     hashmap_t *scope = scope_stack->entries[1]; // depois do global é o escopo da função
     hashmap_value_t *value = find_declaration(scope->label);
     enum data_type infered_return = infer_expression_type(expression);
@@ -413,28 +383,16 @@ void verify_shift(int p) {
 }
 
 int can_implicit_conversion(enum data_type source, enum data_type dest) {
-    printf("# can_implicit_conversion source: ");
-    print_data_type(source);
-    printf(" dest: ");
-    print_data_type(dest);
-
-    if (source == dest) {
-        printf(" TRUE\n");
-        return 1;
-    }
+    if (source == dest) return 1;
     if (source == DT_INTEGER && (dest == DT_FLOAT || dest == DT_BOOL)) {
-        printf(" TRUE\n");
         return 1;
     }
     if (source == DT_BOOL && (dest == DT_FLOAT || dest == DT_INTEGER)) {
-        printf(" TRUE\n");
         return 1;
     }
     if (source == DT_FLOAT && (dest == DT_BOOL || dest == DT_INTEGER)) {
-        printf(" TRUE\n");
         return 1;
     }
-    printf(" FALSE\n");
     return 0;
 }
 
@@ -515,9 +473,8 @@ void hashmap_print(hashmap_t *map) {
 void print_stack() {
     stack_entry_t *entry;
     if (scope_stack != NULL) {
-        while (!stack_is_empty(scope_stack)) {
-            entry = stack_pop(scope_stack);
-            hashmap_print(entry);
+        for (int i = 0; i <= scope_stack->index; i++) {
+            hashmap_print(scope_stack->entries[i]);
         }
     }
 }

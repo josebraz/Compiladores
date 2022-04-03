@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "hashmap.h"
+#include "list.h"
 
 hashmap_t* hashmap_init(char *label) {
     hashmap_t* hashmap = (hashmap_t *) malloc(sizeof(hashmap_t));
@@ -27,12 +28,32 @@ hashmap_t* hashmap_init(char *label) {
     return hashmap;
 }
 
+void hashmap_destroy(hashmap_t *map) {
+    if (map != NULL) {
+        int fold = 0;
+        int index = 0;
+        while (fold < map->size) {
+            hashmap_entry_t *entry = map->values[index++];
+            if (entry != NULL) {
+                if (entry->value->args != NULL) {
+                    list_destroy(entry->value->args);
+                }
+                free(entry->value);
+                free(entry);
+                fold++;
+            }
+        }
+        free(map->values);
+        free(map->label);
+        free(map);
+    }
+}
+
 void hashmap_alloc_more_mem(hashmap_t *map) {
     printf("hashmap_alloc_more_mem size %d\n", map->size);
     int old_capacity = map->actual_capacity;
     int old_size = map->size;
     hashmap_entry_t **old_values = map->values;
-
     
     int new_capacity = map->actual_capacity * HASHMAP_REALLOC_FACTOR;
     map->values = (hashmap_entry_t **) calloc(new_capacity, sizeof(hashmap_entry_t *));

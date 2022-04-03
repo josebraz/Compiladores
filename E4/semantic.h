@@ -5,20 +5,55 @@
 #include "types.h"
 #include "errors.h"
 
-static stack_t* scope_stack = NULL;
+stack_t* scope_stack;
 
+/**
+ * Inicializa a pilha de escopos e cria o 
+ * escopo global
+ * 
+ */
 void semantic_init();
 
+/**
+ * Cria um novo escopo com o label informado.
+ * No caso de um escopo de função, o label
+ * é o nome da função
+ * 
+ * @param label 
+ */
 void enter_scope(char *label);
 
+/**
+ * Remove o escopo atual da pilha
+ * 
+ */
 void exit_scope();
 
+/**
+ * A partir de uma lista de declaração global,
+ * cria todos as entradas necessárias no escopo
+ * global.
+ * 
+ * @param type 
+ * @param is_static 
+ * @param list 
+ */
 void ident_var_array_global_decl_list(
     enum data_type type,
     int is_static,
     node *list
 );
 
+/**
+ * A partir de uma lista de declaração local,
+ * cria todos as entradas necessárias no escopo
+ * local.
+ * 
+ * @param type Tipo das variáveis/vetor
+ * @param is_static 
+ * @param is_const 
+ * @param list 
+ */
 void ident_var_array_local_decl_list(
     enum data_type type,
     int is_static,

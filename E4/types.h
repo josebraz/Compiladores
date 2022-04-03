@@ -5,6 +5,8 @@
 
 #include "stdlib.h"
 
+#define HASHMAP_KEY_SIZE 128
+
 enum node_mark {
     STMT_T = 0,             // Nodo do tipo comando simples
     EXPRES_T = 1,           // Nodo do tipo expressão
@@ -100,7 +102,7 @@ typedef struct __hashmap_value {
 } hashmap_value_t;
 
 typedef struct __hashmap_entry {
-    char key[20];
+    char key[HASHMAP_KEY_SIZE];
     hashmap_value_t *value;
 } hashmap_entry_t;
 
