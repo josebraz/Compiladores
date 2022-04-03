@@ -8,65 +8,15 @@
 #include "asp.h"
 #include "types.h"
 
-node *inner_scope_start = NULL;
-node *inner_scope_last_start = NULL;
-node *inner_scope_end = NULL;
-node *inner_scope_last_end = NULL;
-
-void asp_scope_clear() {
-    inner_scope_start = NULL;
-    inner_scope_last_start = NULL;
-    inner_scope_end = NULL;
-    inner_scope_last_end = NULL;
-}
-
-void asp_scope_completed(node *start_node) {
-    inner_scope_last_start = inner_scope_start;
-    inner_scope_start = start_node;
-    // printf("# asp_scope_completed start: %s ", start_node->label);
-    // if (inner_scope_last_start != NULL) {
-    //     printf("last start %s", inner_scope_last_start->label);
-    // }
-    // printf("\n");
-}
-
-void asp_scope_end(node *end_node) {
-    if (inner_scope_end != inner_scope_last_start) {
-        inner_scope_last_end = inner_scope_end;
-    }
-    inner_scope_end = end_node;
-    // printf("# asp_scope_end end: %s ", end_node->label);
-    // if (inner_scope_last_end != NULL) {
-    //     printf("last end %s", inner_scope_last_end->label);
-    // }
-    // printf("\n");
-}
-
 node *asp_stmt_list(node *head, node *tail) {
-    // printf("# asp_stmt_list - ");
-    // if (head != NULL) {
-    //     printf("HEAD %s ", head->label);
-    // } else {
-    //     printf("HEAD NULL ");
-    // }
-    // if (tail != NULL) {
-    //     printf("TAIL %s", tail->label);
-    // } else {
-    //     printf("TAIL NULL");
-    // }
-    // printf("\n");
-
     if (head == NULL) return tail;
-    
-    if (head == inner_scope_start && inner_scope_last_end != NULL) {
-        add_child(inner_scope_last_end, tail);
+    if (head->size == 1) {
+        add_child(head, tail);
     } else {
-        if (head == inner_scope_last_start) {
-            add_child(inner_scope_last_end, tail);
-        } else {
-            add_child(head, tail);
-        }
+        node *last_head = find_last_node_not_leaf(head);
+        add_child(last_head, tail);
     }
+    
     return head;
 }
 
@@ -183,25 +133,21 @@ void print_node(node *node) {
     }
 }
 
-node* find_last_node_of_type(node *parent, enum node_mark mark) {
+node* find_last_node_not_leaf(node *parent) {
     if (parent == NULL) return NULL;
+    if (parent->mark == EXPRES_T) return NULL;
     
     if (parent->size > 0) { // o nodo está no meio, chama recursão
         node *child = parent->nodes[parent->size-1];
-        node *fold = find_last_node_of_type(child, mark);
-        
-        // Vem testando de baixo pra cima
-        if (fold == NULL && child->mark == mark) {
-            return child;
+        node *fold = find_last_node_not_leaf(child);
+
+        if (fold == NULL) {
+            return parent;
         } else {
             return fold;
         }
     } else { // o nodo é folha
-        if (parent->mark == mark) {
-            return parent;
-        } else {
-            return NULL;
-        }
+        return NULL;
     }
 }
 
@@ -244,8 +190,8 @@ node* create_node_ternary_ope(char *value, node* node1, node *node2, node *node3
     return create_node(value, EXPRES_T, 3, node1, node2, node3);
 }
 
-node* create_node_function(char *name, node* body, node* next) {
-    node *new_node = create_node(name, EXPRES_T, 2, body, next); 
+node* create_node_function(char *name, node* body) {
+    node *new_node = create_node(name, EXPRES_T, 1, body); 
     free(name);
     return new_node;
 }

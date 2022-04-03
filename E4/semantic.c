@@ -478,7 +478,7 @@ enum data_type infer_expression_type(node *root) {
 void hashmap_print(hashmap_t *map) {
     int fold = 0;
     int index = 0;
-    printf("# hashmap %p {\n", map);
+    printf("# hashmap %s {\n", map->label);
     if (map != NULL) {
         while (fold < map->size) {
             hashmap_entry_t *entry = map->values[index++];

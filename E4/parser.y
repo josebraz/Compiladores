@@ -111,20 +111,32 @@
 %%
 
 // Única entrada, para setar a arvore
-s : prog { arvore = $1; };
+s : { semantic_init(); } prog { arvore = $2; };
 
 // O programa é um conjunto de declarações globais e
 // declarações de funções, também é aceito uma linguagem vazia 
 prog : 
-    global_decl prog { $$ = $2; }
-  | type TK_IDENTIFICADOR function_params { 
-        ident_fun_declaration($2, $1, $3);
-        asp_scope_clear();
-    } function_body prog { $$ = create_node_function($2, $5, $6); }
-  | TK_PR_STATIC type TK_IDENTIFICADOR function_params { 
+    prog global_decl { $$ = $1; }
+  | prog type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($3, $2, $4);
-        asp_scope_clear();
-    } function_body prog { $$ = create_node_function($3, $6, $7);  }
+    } function_body { 
+        node *fun = create_node_function($3, $6); 
+        if ($1 == NULL) {
+          $$ = fun;
+        } else {
+          $$ = add_child($1, fun);
+        }
+    }
+  | prog TK_PR_STATIC type TK_IDENTIFICADOR function_params { 
+        ident_fun_declaration($4, $3, $5);
+    } function_body { 
+        node *fun = create_node_function($4, $7); 
+        if ($1 == NULL) {
+          $$ = fun;
+        } else {
+          $$ = add_child($1, fun);
+        }
+    }
   | { $$ = NULL; };
 
 // Declaração de variáveis globais
@@ -169,9 +181,6 @@ function_body:
     '{' '}' { $$ = NULL; }
   | '{' statement_list '}' { 
         $$ = $2;
-        if ($$ != NULL) {
-          asp_scope_completed($$);
-        }
         exit_scope();
   };
 
@@ -180,20 +189,12 @@ statement_block:
     '{' '}' { $$ = NULL; }
   | '{' { enter_scope("local"); } statement_list '}' { 
         $$ = $3;
-        if ($$ != NULL) {
-          asp_scope_completed($$);
-        }
         exit_scope();
   };
     
 statement_list:
-    statement statement_list { $$ = asp_stmt_list($1, $2); } 
-  | statement {
-        $$ = $1;
-        if ($$ != NULL) {
-          asp_scope_end($$);
-        }
-    };
+   statement statement_list { $$ = asp_stmt_list($1, $2); } 
+  | statement;
 
 // Todos os comandos simples da linguagem
 statement:
@@ -226,7 +227,7 @@ local_decl:
     };
 
 local_decl_list:
-    TK_IDENTIFICADOR ',' local_decl_list { 
+  TK_IDENTIFICADOR ',' local_decl_list { 
         node *id_node = create_leaf_decl_var($1); 
         $$ = add_child(id_node, $3);
     }

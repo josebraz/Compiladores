@@ -4,9 +4,6 @@
 */
 #include <stdio.h>
 
-#include "semantic.h"
-#include "list.h"
-
 extern int yyparse(void);
 extern int yylex_destroy(void);
 
@@ -16,7 +13,6 @@ void libera(void *arvore);
 
 int main (int argc, char **argv)
 {
-  semantic_init();
   int ret = yyparse();
   exporta(arvore);
   libera(arvore);

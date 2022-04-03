@@ -5,12 +5,6 @@
 
 #include "types.h"
 
-void asp_scope_clear();
-
-void asp_scope_completed(node *start_node);
-
-void asp_scope_end(node *end_node);
-
 node *asp_stmt_list(node *head, node *tail);
 
 node *remove_uninit_decl_var(node *n);
@@ -44,13 +38,12 @@ void print_node(node *node);
 
 /**
  * Partindo o parent, retorna o último (mais profundo) nodo que 
- * tem o tipo type, caso não encontre retorna NULL
+ * não é folha, caso não encontre retorna NULL
  * 
  * @param parent 
- * @param type 
  * @return node* 
  */
-node* find_last_node_of_type(node *parent, enum node_mark mark);
+node* find_last_node_not_leaf(node *parent);
 
 /**
  * Cria um nodo com o identificador label, do tipo type com o número
@@ -108,10 +101,9 @@ node* create_node_ternary_ope(char *value, node* node1, node *node2, node *node3
  * 
  * @param name nome da função
  * @param body primeiro comando da função
- * @param next primeiro comando após a função
  * @return node* o novo nodo criado
  */
-node* create_node_function(char *name, node* body, node* next);
+node* create_node_function(char *name, node* body);
 
 /**
  * Cria uma nova folha genérica, é normalmente 
