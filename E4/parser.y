@@ -140,9 +140,13 @@ global_decl_list :
   | TK_IDENTIFICADOR '[' TK_LIT_INT ']' ',' global_decl_list {
         node *array_node = create_node_array_decl($1, $3);
         $$ = add_child(array_node, $6);
-  }
+        literal_use(array_node->nodes[1]); 
+    }
   | TK_IDENTIFICADOR { $$ = create_leaf_id($1); }
-  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' { $$ = create_node_array_decl($1, $3); };
+  | TK_IDENTIFICADOR '[' TK_LIT_INT ']' { 
+        $$ = create_node_array_decl($1, $3); 
+        literal_use($$->nodes[1]); 
+    };
 
 // Declaração das funções        
 function_params: 
@@ -311,6 +315,7 @@ shift:
         $$ = create_node(">>", STMT_T, 2, id_node, offset); 
         ident_var_use($1);
         verify_shift($3);
+        literal_use(offset);
         free($2);
     }
   | TK_IDENTIFICADOR '[' expression ']' TK_OC_SL TK_LIT_INT {
@@ -320,6 +325,7 @@ shift:
         $$ = create_node(">>", STMT_T, 2, index_node, offset); 
         verify_shift($6);
         ident_vector_use($1, $3);
+        literal_use(offset);
         free($5);
   }
   | TK_IDENTIFICADOR TK_OC_SR TK_LIT_INT {
@@ -328,6 +334,7 @@ shift:
         $$ = create_node("<<", STMT_T, 2, id_node, offset); 
         ident_var_use($1);
         verify_shift($3);
+        literal_use(offset);
         free($2);
     }
   | TK_IDENTIFICADOR '[' expression ']' TK_OC_SR TK_LIT_INT {
@@ -337,6 +344,7 @@ shift:
         $$ = create_node("<<", STMT_T, 2, index_node, offset); 
         verify_shift($6);
         ident_vector_use($1, $3);
+        literal_use(offset); 
         free($5);
   };
 
@@ -444,8 +452,8 @@ operand:
         $$ = create_leaf_id($1); 
         ident_var_use($1);
     } 
-  | TK_LIT_INT { $$ = create_leaf_int($1); } 
-  | TK_LIT_FLOAT { $$ = create_leaf_float($1); } 
+  | TK_LIT_INT { $$ = create_leaf_int($1); literal_use($$); } 
+  | TK_LIT_FLOAT { $$ = create_leaf_float($1); literal_use($$); } 
   | function_call
   | TK_IDENTIFICADOR '[' expression ']' { 
         $$ = create_node_id_array($1, $3); 

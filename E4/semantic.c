@@ -12,6 +12,8 @@
 #include "hashmap.h"
 #include "errors.h"
 
+extern int get_line_number(void);
+
 void hashmap_print(hashmap_t *map);
 
 int size_data_type(enum data_type type) {
@@ -152,7 +154,6 @@ void ident_var_array_local_decl_list(
     node *list
 ) {
     printf("# ident_var_array_local_decl_list\n");
-    print_tree_labels(list);
 
     enum data_type infered_type;
     node *p = list;

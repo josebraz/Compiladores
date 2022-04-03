@@ -70,15 +70,6 @@ void exporta(void *arvore) {
     print_stack();
 }
 
-void free_node(node *n) {
-    if (n != NULL) {
-        if (n->value != NULL) free(n->value);
-        if (n->label != NULL) free(n->label);
-        if (n->nodes != NULL) free(n->nodes);
-        free(n);
-    }
-}
-
 void libera(void *arvore) {
     int i;
     node *n = (node *) arvore;

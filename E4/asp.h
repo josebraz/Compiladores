@@ -192,5 +192,11 @@ node* create_leaf_string(char *value);
  */
 node* create_leaf_fun_call(char *value, node* params);
 
+/**
+ * Libera a memória do nodo n
+ * 
+ * @param n 
+ */
+void free_node(node *n);
 
 #endif

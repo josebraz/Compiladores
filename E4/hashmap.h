@@ -15,7 +15,7 @@ int hashmap_hashcode(const char *key);
 
 int hashmap_index(const hashmap_t *map, const char *key);
 
-void hashmap_put(hashmap_t *map, const char *key, const hashmap_value_t *value);
+void hashmap_put(hashmap_t *map, const char *key, hashmap_value_t *value);
 
 hashmap_value_t *hashmap_get(const hashmap_t *map, const char *key);
 

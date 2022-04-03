@@ -68,7 +68,7 @@ int hashmap_index(const hashmap_t *map, const char *key) {
     return hashmap_hashcode(key) % map->actual_capacity;
 }
 
-void hashmap_put(hashmap_t *map, const char *key, const hashmap_value_t *value) {
+void hashmap_put(hashmap_t *map, const char *key, hashmap_value_t *value) {
     static int all_conflits = 0;
     int index, conflits = 0;
     hashmap_entry_t *entry;

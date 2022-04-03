@@ -34,11 +34,4 @@ void print_tree_children(void *arvore);
  */
 void print_tree_labels(void *arvore);
 
-/**
- * Libera a memória do nodo n
- * 
- * @param n 
- */
-void free_node(node *n);
-
 #endif
