@@ -1,5 +1,5 @@
 *.o
-etapa4
+etapa5
 lex.yy.*
 parser.tab.*
 *.png

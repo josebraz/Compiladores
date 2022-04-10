@@ -55,6 +55,18 @@ void show_error_message(int code, char *message, ...) {
     exit(code);
 }
 
+// Guardam a informação dos tipo e atributos de 
+// uma lista de declaração de variáveis
+int is_static_decl;
+int is_const_delc;
+enum data_type type_decl;
+
+void init_decl_list(int is_static, int is_const, enum data_type type) {
+    is_static_decl = is_static;
+    is_const_delc = is_const;
+    type_decl = type;
+}
+
 hashmap_value_t *create_hashmap_value(
     enum data_type type,
     enum nature_type nature,
@@ -104,6 +116,25 @@ void verify_alread_declared(hashmap_t *current_scope, char *ident) {
     }
 }
 
+hashmap_value_t *ident_var_declaration_item(char *ident) {
+    return ident_var_declaration(ident, type_decl, is_static_decl);
+}
+
+hashmap_value_t *ident_var_declaration_init_item(char *ident, node *init) {
+    enum data_type infered_type = infer_expression_type(init);
+    if (infered_type == type_decl && type_decl == DT_STRING) {
+        hashmap_value_t *value = ident_var_declaration(ident, type_decl, is_static_decl);
+        value->men_size = strlen((char *) init->value);
+    } else if (can_implicit_conversion(infered_type, type_decl)) {
+        return ident_var_declaration(ident, type_decl, is_static_decl);
+    } else if (type_decl == DT_STRING) {
+        show_error_message(ERR_STRING_TO_X, "Erro ao declarar \"%s\" - Não podemos fazer coersão de string", ident);
+    } else if (type_decl == DT_CHAR) {
+        show_error_message(ERR_CHAR_TO_X, "Erro ao declarar \"%s\" - Não podemos fazer coersão de char", ident);
+    }
+    return NULL;
+}
+
 hashmap_value_t *ident_var_declaration(
     char *ident,
     enum data_type type,
@@ -151,41 +182,6 @@ void literal_use(node* literal) {
         value->men_offset = global_scope->offset;
         global_scope->offset += value->men_size;
         hashmap_put(global_scope, key, value);
-    }
-}
-
-void ident_var_array_local_decl_list(
-    enum data_type type,
-    int is_static,
-    int is_const,
-    node *list
-) {
-    enum data_type infered_type;
-    node *p = list;
-    char *ident;
-    while (p != NULL) {
-        if (p->mark == DECL_VAR_INIT_T) {
-            ident = (char *) p->nodes[0]->value;
-            infered_type = infer_expression_type(p->nodes[1]);
-            if (infered_type == type && type == DT_STRING) {
-                hashmap_value_t *value = ident_var_declaration(ident, type, is_static);
-                value->men_size = strlen((char *) p->nodes[1]->value);
-            } else if (can_implicit_conversion(infered_type, type)) {
-                ident_var_declaration(ident, type, is_static);
-            } else if (type == DT_STRING) {
-                show_error_message(ERR_STRING_TO_X, "Erro ao declarar \"%s\" - Não podemos fazer coersão de string", ident);
-            } else if (type == DT_CHAR) {
-                show_error_message(ERR_CHAR_TO_X, "Erro ao declarar \"%s\" - Não podemos fazer coersão de char", ident);
-            }
-        } else if(p->mark == DECL_VAR_T) {
-            ident = (char *) p->value;
-            ident_var_declaration(p->label, type, is_static);
-        } else if (p->mark == ARRAY_T) {
-            ident = (char *) p->nodes[0]->value;
-            int vector_size = *((int *) p->nodes[1]->value);
-            ident_vector_declaration(ident, type, is_static, vector_size);
-        }
-        p = next_node(p);
     }
 }
 

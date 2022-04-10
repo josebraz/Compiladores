@@ -38,34 +38,34 @@ void print_tree_labels(void *arvore) {
     }
 }
 
-// void generate_dot_rec(void *arvore) {
-//     int i;
-//     node *n = (node *) arvore;
+void generate_dot_rec(void *arvore) {
+    int i;
+    node *n = (node *) arvore;
     
-//     if (n == NULL) return;
+    if (n == NULL) return;
     
-//     printf("\t%ld [label=\"%s\" mark=%d]\n", n, n->label, n->mark);
+    printf("\t%ld [label=\"%s\" mark=%d]\n", n, n->label, n->mark);
     
-//     for (i = 0; i < n->size; i++) {
-//         if (n->nodes[i] != NULL) {
-//             printf("\t%ld -> %ld\n", n, n->nodes[i]);
-//         }
-//     }
-//     for (i = 0; i < n->size; i++) {
-//         generate_dot_rec(n->nodes[i]);
-//     }
-// }
+    for (i = 0; i < n->size; i++) {
+        if (n->nodes[i] != NULL) {
+            printf("\t%ld -> %ld\n", n, n->nodes[i]);
+        }
+    }
+    for (i = 0; i < n->size; i++) {
+        generate_dot_rec(n->nodes[i]);
+    }
+}
 
-// void generate_dot(void *arvore) {
-//     printf("digraph {\n");
-//     generate_dot_rec(arvore);
-//     printf("}\n");
-// }
+void generate_dot(void *arvore) {
+    printf("digraph {\n");
+    generate_dot_rec(arvore);
+    printf("}\n");
+}
 
 void exporta(void *arvore) {
     // print_tree_children(arvore);
     // print_tree_labels(arvore);
-    // generate_dot(arvore);
+    generate_dot(arvore);
     print_stack();
     output_code_from_node((node*) arvore);
 }

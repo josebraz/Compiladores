@@ -69,51 +69,11 @@ instruction_entry_t *generate_literal_load(int value) {
     return instr_lst_create_new(code);
 }
 
-instruction_t *generate_jumpI(int label) {
-    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
-    strcpy(instr->code, "jumpI");
-    instr->op1_type = OT_DISABLED;
-    instr->op1 = EMPTY;
-    instr->op2_type = OT_DISABLED;
-    instr->op2 = EMPTY;
-    instr->op3_type = OT_LABEL;
-    instr->op3 = label;
-    return instr;
-}
-
-instruction_entry_t *process_arith_expression(node *head) {
-    printf("Label %s\n", head->label);
-    instruction_entry_t *instr_current;
-    if (head->mark == LITERAL_T && head->type == DT_INTEGER) {
-        head->code = generate_instructionI("loadI", EMPTY, *((int *) head->value), next_reg());
-        instr_current = instr_lst_create_new(head->code);
-    } else if (head->mark == VAR_T) {
-        generate_var_load((char *) head->value);
-    } else if (head->mark == ARRAY_T) {
-        // TODO
-    } else if (head->mark == FUN_CALL_T) {
-        // TODO
-    } else {
-        // chamamos a recursão para ir até o mais a esquerda e abaixo
-        instruction_entry_t *instr1 = NULL;
-        instruction_entry_t *instr2 = NULL;
-        instruction_entry_t *instr3 = NULL;
-
-        if (head->size >= 1) instr1 = process_arith_expression(head->nodes[0]);
-        if (head->size >= 2) instr2 = process_arith_expression(head->nodes[1]);
-        if (head->size >= 3) instr3 = process_arith_expression(head->nodes[2]);
-
-        if (strcmp(head->label, "*") == 0) {
-            return generate_code("mult", instr1, instr2);
-        } else if (strcmp(head->label, "/") == 0) {
-            return generate_code("div", instr1, instr2);
-        } else if (strcmp(head->label, "+") == 0) {
-            return generate_code("add", instr1, instr2);
-        } else if (strcmp(head->label, "-") == 0) {
-            return generate_code("sub", instr1, instr2);
-        }
-    }
-    return instr_current;
+instruction_entry_t *generate_var_assignment(char *ident, instruction_entry_t *entry) {
+    int reg, offset;
+    get_var_mem_loc(ident, &reg, &offset);
+    instruction_t *code = generate_instructionS("storeAI", entry->entry->op3, reg, offset);
+    return instr_lst_create_new(code);
 }
 
 void print_instr_lst(instruction_entry_t *entry) {
@@ -144,16 +104,24 @@ void print_instr_param(int op, int op_type) {
 
 void print_instruction(instruction_t *inst) {
     printf("%s ", inst->code);
-    if (inst->op1_type != OT_DISABLED && inst->op1 != EMPTY) {
+    if (strncmp(inst->code, "store", 5) == 0) {
         print_instr_param(inst->op1, inst->op1_type);
-        printf(", ");
-    }
-    if (inst->op2_type != OT_DISABLED && inst->op2 != EMPTY) {
+        printf(" => ");
         print_instr_param(inst->op2, inst->op2_type);
-    }
-    printf(" => ");
-    if (inst->op3_type != OT_DISABLED && inst->op3 != EMPTY) {
+        printf(", ");
         print_instr_param(inst->op3, inst->op3_type);
+    } else {
+        if (inst->op1_type != OT_DISABLED && inst->op1 != EMPTY) {
+            print_instr_param(inst->op1, inst->op1_type);
+            printf(", ");
+        }
+        if (inst->op2_type != OT_DISABLED && inst->op2 != EMPTY) {
+            print_instr_param(inst->op2, inst->op2_type);
+        }
+        printf(" => ");
+        if (inst->op3_type != OT_DISABLED && inst->op3 != EMPTY) {
+            print_instr_param(inst->op3, inst->op3_type);
+        }
     }
     printf("\n");
 }
@@ -161,6 +129,9 @@ void print_instruction(instruction_t *inst) {
 void get_var_mem_loc(char *ident, int *reg, int *offset) {
     hashmap_t *scope;
     hashmap_value_t *decl = find_declaration(ident, &scope);
+    if (decl == NULL || scope == NULL) {
+        exit(1);
+    }
     if (strcmp(scope->label, "global") == 0) {
         *reg = RBSS;
     } else {
@@ -197,11 +168,45 @@ instruction_t *generate_instructionI(char *code, int reg1, int value, int reg3) 
     return instr;
 }
 
+instruction_t *generate_instructionS(char *code, int reg1, int value, int reg3) {
+    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    strcpy(instr->code, code);
+    instr->op1_type = OT_REG;
+    instr->op1 = reg1;
+    instr->op2_type = OT_REG;
+    instr->op2 = value;
+    instr->op3_type = OT_IMED;
+    instr->op3 = reg3;
+    instr_counter++;
+    return instr;
+}
+
+instruction_t *generate_jumpI(int label) {
+    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    strcpy(instr->code, "jumpI");
+    instr->op1_type = OT_DISABLED;
+    instr->op1 = EMPTY;
+    instr->op2_type = OT_DISABLED;
+    instr->op2 = EMPTY;
+    instr->op3_type = OT_LABEL;
+    instr->op3 = label;
+    return instr;
+}
+
 void output_code_from_node_rec(node* n) {
-    for (int i = 0; i < n->size; i++) {
+    int max;
+    if (n->size > 0 && n->nodes[n->size-1]->mark == STMT_T) {
+        max = n->size-1;
+    } else {
+        max = n->size;
+    }
+    for (int i = 0; i < max; i++) {
         output_code_from_node_rec(n->nodes[i]);
     }
     print_instr_lst(n->code);
+    if (max != n->size) {
+        output_code_from_node_rec(n->nodes[n->size-1]);
+    }
 }
 
 void output_code_from_node(node* n) {

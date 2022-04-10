@@ -210,31 +210,22 @@ statement:
 
 // Declaração de variáveis locais
 local_decl:
-    TK_PR_STATIC type local_decl_list { 
-        ident_var_array_local_decl_list($2, 1, 0, $3);
-        $$ = remove_uninit_decl_var($3); 
-        /* $$->code = generate_var_init($2, $$); */
-    }
-  | TK_PR_CONST type local_decl_list { 
-        ident_var_array_local_decl_list($2, 0, 1, $3);
-        $$ = remove_uninit_decl_var($3); 
-    }
-  | TK_PR_STATIC TK_PR_CONST type local_decl_list { 
-        ident_var_array_local_decl_list($3, 1, 1, $4);
-        $$ = remove_uninit_decl_var($4);
-    }
-  | type local_decl_list { 
-        ident_var_array_local_decl_list($1, 0, 0, $2);
-        $$ = remove_uninit_decl_var($2); 
-    };
+    TK_PR_STATIC type { init_decl_list(1, 0, $2); } local_decl_list { $$ = $4; }
+  | TK_PR_CONST type { init_decl_list(0, 1, $2); } local_decl_list { $$ = $4; }
+  | TK_PR_STATIC TK_PR_CONST type { init_decl_list(1, 1, $3); } local_decl_list { $$ = $5; }
+  | type { init_decl_list(0, 0, $1); } local_decl_list { $$ = $3; };
 
 local_decl_list:
   TK_IDENTIFICADOR ',' local_decl_list { 
-        node *id_node = create_leaf_decl_var($1); 
-        $$ = add_child(id_node, $3);
+        $$ = $3; 
+        ident_var_declaration_item($1);
     }
-  | TK_IDENTIFICADOR { $$ = create_leaf_decl_var($1);  }
+  | TK_IDENTIFICADOR { 
+        $$ = NULL; 
+        ident_var_declaration_item($1);
+    }
   | TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list { 
+        printf("AAAAA\n");
         free($2);
         node *id_node = create_leaf_id($1); 
         if ($5 == NULL) {
@@ -242,8 +233,11 @@ local_decl_list:
         } else {
             $$ = create_node("<=", DECL_VAR_INIT_T, 3, id_node, $3, $5); 
         }
+        ident_var_declaration_init_item($1, $3);
+        $$->code = generate_var_assignment($1, $3->code);
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list { 
+    printf("AAAAA\n");
         free($2);
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
@@ -252,17 +246,27 @@ local_decl_list:
         } else {
             $$ = create_node("<=", DECL_VAR_INIT_T, 3, dest_node, source_node, $5); 
         }
+        ident_var_declaration_init_item($1, source_node);
+        instruction_entry_t *load_code = generate_var_load($3);
+        instruction_entry_t *assignment_code = generate_var_assignment($1, load_code);
+        $$->code = instr_lst_join(load_code, assignment_code);
     } 
   | TK_IDENTIFICADOR TK_OC_LE literal { 
         free($2);
         node *id_node = create_leaf_id($1); 
         $$ = create_node("<=", DECL_VAR_INIT_T, 2, id_node, $3); 
+        ident_var_declaration_init_item($1, $3);
+        $$->code = generate_var_assignment($1, $3->code);
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR { 
         free($2);
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
         $$ = create_node("<=", DECL_VAR_INIT_T, 2, dest_node, source_node);  
+        ident_var_declaration_init_item($1, source_node);
+        instruction_entry_t *load_code = generate_var_load($3);
+        instruction_entry_t *assignment_code = generate_var_assignment($1, load_code);
+        $$->code = instr_lst_join(load_code, assignment_code);
     };
 
 // Comando de atribuição (depois de declarar)
@@ -271,6 +275,7 @@ assignment:
         node *id_node = create_leaf_id($1); 
         $$ = create_node("=", STMT_T, 2, id_node, $3); 
         ident_var_set($1, $3);
+        $$->code = generate_var_assignment($1, $3->code);
     } 
   | TK_IDENTIFICADOR '[' expression ']' '=' expression { 
         node *id_node = create_leaf_id($1); 

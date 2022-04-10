@@ -29,6 +29,8 @@ void enter_scope(char *label);
  */
 void exit_scope();
 
+void init_decl_list(int is_static, int is_const, enum data_type type);
+
 /**
  * A partir de uma lista de declaração global,
  * cria todos as entradas necessárias no escopo
@@ -41,23 +43,6 @@ void exit_scope();
 void ident_var_array_global_decl_list(
     enum data_type type,
     int is_static,
-    node *list
-);
-
-/**
- * A partir de uma lista de declaração local,
- * cria todos as entradas necessárias no escopo
- * local.
- * 
- * @param type Tipo das variáveis/vetor
- * @param is_static 
- * @param is_const 
- * @param list 
- */
-void ident_var_array_local_decl_list(
-    enum data_type type,
-    int is_static,
-    int is_const,
     node *list
 );
 
@@ -83,6 +68,10 @@ hashmap_value_t *ident_var_declaration(
     enum data_type type,
     int is_static
 );
+
+hashmap_value_t *ident_var_declaration_item(char *ident);
+
+hashmap_value_t *ident_var_declaration_init_item(char *ident, node *init);
 
 /**
  * Nova declaração de um vetor.

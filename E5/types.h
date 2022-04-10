@@ -125,7 +125,6 @@ typedef struct __hashmap_value {
     int men_offset;
     list_t *args;
     int fun_label;
-    // void *value;
 } hashmap_value_t;
 
 typedef struct __hashmap_entry {

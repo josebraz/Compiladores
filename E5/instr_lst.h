@@ -25,11 +25,13 @@ instruction_entry_t *generate_var_load(char *ident);
 
 instruction_entry_t *generate_literal_load(int value);
 
-instruction_entry_t *process_arith_expression(node *head);
+instruction_entry_t *generate_var_assignment(char *ident, instruction_entry_t *entry);
 
 instruction_t *generate_instruction(char *code, int reg1, int reg2, int reg3);
 
 instruction_t *generate_instructionI(char *code, int reg1, int value, int reg3);
+
+instruction_t *generate_instructionS(char *code, int reg1, int value, int reg3);
 
 instruction_t *generate_jumpI(int label);
 
