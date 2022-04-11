@@ -93,6 +93,7 @@ void semantic_init() {
 void enter_scope(char *label) {
     hashmap_t *current_scope = stack_peek(scope_stack);
     hashmap_t* new_table = hashmap_init(label);
+    // Escopos alinhados herdam o offset da tabela pai
     if (strcmp(current_scope->label, "global") != 0) {
         new_table->offset = current_scope->offset;
     }
@@ -102,7 +103,7 @@ void enter_scope(char *label) {
 void exit_scope() {
     hashmap_t *current_scope = stack_pop(scope_stack);
     hashmap_t *out_scope = stack_peek(scope_stack);
-    if (strcmp(current_scope->label, "global") != 0) {
+    if (strcmp(out_scope->label, "global") != 0) {
         out_scope->offset = current_scope->offset;
     }
     hashmap_print(current_scope);
@@ -180,7 +181,7 @@ void literal_use(node* literal) {
             value->men_size = strlen(key);
         }
         value->men_offset = global_scope->offset;
-        global_scope->offset += value->men_size;
+        // global_scope->offset += value->men_size;
         hashmap_put(global_scope, key, value);
     }
 }

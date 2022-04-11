@@ -69,6 +69,11 @@ enum TOKEN_TYPE {
     IDENT_T     = 7
 };
 
+typedef struct bool_list {
+    int *label_pointer;
+    struct bool_list *next;
+} bool_list;
+
 /**
  * Estrutura do nodo da nossa ASP
  * 
@@ -80,7 +85,10 @@ typedef struct node {
     enum node_mark mark; // Marcação do nodo, para controles da criação da AST
     enum data_type type; // O tipo do dado
     struct node **nodes; // Lista de nodos filhos (pode ser NULL)
+    // Parte da geração de código
     instruction_entry_t *code;
+    bool_list *true_list;
+    bool_list *false_list;
 } node; 
 
 typedef struct __declaration_type {

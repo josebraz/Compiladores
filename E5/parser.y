@@ -5,6 +5,7 @@
   #include <stdlib.h>
   #include <string.h>
   
+  #include "code_gen.h"
   #include "instr_lst.h"
   #include "semantic.h"
   #include "asp.h"
@@ -325,6 +326,7 @@ shift:
         verify_shift($3);
         literal_use(offset);
         free($2);
+        $$->code = generate_shift(1, $1, $3);
     }
   | TK_IDENTIFICADOR '[' expression ']' TK_OC_SL TK_LIT_INT {
         node *id_node = create_leaf_id($1); 
@@ -344,6 +346,7 @@ shift:
         verify_shift($3);
         literal_use(offset);
         free($2);
+        $$->code = generate_shift(0, $1, $3);
     }
   | TK_IDENTIFICADOR '[' expression ']' TK_OC_SR TK_LIT_INT {
         node *id_node = create_leaf_id($1); 
@@ -366,9 +369,11 @@ control_flow:
 control_if:
     TK_PR_IF '(' expression ')' statement_block {
         $$ = create_node("if", STMT_T, 2, $3, $5); 
+        generate_if($$, $3, $5, NULL);
     }
   | TK_PR_IF '(' expression ')' statement_block TK_PR_ELSE statement_block {
         $$ = create_node("if", STMT_T, 3, $3, $5, $7); 
+        generate_if($$, $3, $5, $7);
     };
 
 control_for:
@@ -402,6 +407,7 @@ expression:
 expression10:
     expression10 TK_OC_OR expression9 { 
         $$ = create_node_binary_ope("||", $1, $3); 
+        generate_or($$, $1, $3);
         free($2);
     } 
   | expression9;
@@ -409,6 +415,7 @@ expression10:
 expression9:
     expression9 TK_OC_AND expression8 { 
         $$ = create_node_binary_ope("&&", $1, $3); 
+        generate_and($$, $1, $3);
         free($2); 
     } 
   | expression8;
@@ -430,12 +437,12 @@ expression7:
 expression6:
     expression6 TK_OC_EQ expression5 { 
         $$ = create_node_binary_ope("==", $1, $3); 
-        $$->code = generate_code("cmp_EQ", $1->code, $3->code);
+        generate_relop("EQ", $$, $1, $3);
         free($2);
     } 
   | expression6 TK_OC_NE expression5 { 
         $$ = create_node_binary_ope("!=", $1, $3); 
-        $$->code = generate_code("cmp_NE", $1->code, $3->code);
+        generate_relop("NE", $$, $1, $3);
         free($2); 
     } 
   | expression5;
@@ -443,20 +450,20 @@ expression6:
 expression5:
     expression5 '<' expression4 { 
         $$ = create_node_binary_ope("<", $1, $3); 
-        $$->code = generate_code("cmp_LT", $1->code, $3->code);
+        generate_relop("LT", $$, $1, $3);
     } 
   | expression5 '>' expression4 { 
         $$ = create_node_binary_ope(">", $1, $3);
-        $$->code = generate_code("cmp_GT", $1->code, $3->code); 
+        generate_relop("GT", $$, $1, $3);
     } 
   | expression5 TK_OC_LE expression4 { 
         $$ = create_node_binary_ope("<=", $1, $3); 
-        $$->code = generate_code("cmp_LE", $1->code, $3->code);
+        generate_relop("LE", $$, $1, $3);
         free($2);
     } 
   | expression5 TK_OC_GE expression4 { 
         $$ = create_node_binary_ope(">=", $1, $3); 
-        $$->code = generate_code("cmp_GE", $1->code, $3->code);
+        generate_relop("GE", $$, $1, $3);
         free($2);
     } 
   | expression4;
@@ -496,7 +503,10 @@ expression1:
     '+' expression1 { $$ = create_node_unary_ope("+", $2); } 
   | '-' expression1 { $$ = create_node_unary_ope("-", $2); } 
   | '?' expression1 { $$ = create_node_unary_ope("?", $2); } 
-  | '!' expression1 { $$ = create_node_unary_ope("!", $2); } 
+  | '!' expression1 { 
+        $$ = create_node_unary_ope("!", $2); 
+        generate_not($$, $2);
+    } 
   | '&' expression1 { $$ = create_node_unary_ope("&", $2); } 
   | '*' expression1 { $$ = create_node_unary_ope("*", $2); } 
   | '#' expression1 { $$ = create_node_unary_ope("#", $2); } 
@@ -522,6 +532,16 @@ operand:
         $$ = create_leaf_float($1); 
         literal_use($$); 
     } 
+  | TK_LIT_FALSE { 
+      $$ = create_leaf_bool($1, "false"); 
+      literal_use($$); 
+      generate_false($$);
+    } 
+  | TK_LIT_TRUE { 
+        $$ = create_leaf_bool($1, "true");
+        literal_use($$); 
+        generate_true($$);
+    } 
   | function_call
   | TK_IDENTIFICADOR '[' expression ']' { 
         $$ = create_node_id_array($1, $3); 
@@ -543,10 +563,12 @@ literal:
   | TK_LIT_FALSE { 
       $$ = create_leaf_bool($1, "false"); 
       literal_use($$); 
+      generate_false($$);
     } 
   | TK_LIT_TRUE { 
         $$ = create_leaf_bool($1, "true");
         literal_use($$); 
+        generate_true($$);
     } 
   | TK_LIT_CHAR { 
         $$ = create_leaf_char($1); 

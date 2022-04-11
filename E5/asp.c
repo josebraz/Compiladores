@@ -289,9 +289,18 @@ node* create_leaf_fun_call(char *value, node* params) {
 
 void free_node(node *n) {
     if (n != NULL) {
-        if (n->value != NULL) free(n->value);
-        if (n->label != NULL) free(n->label);
-        if (n->nodes != NULL) free(n->nodes);
+        if (n->value != NULL) {
+            free(n->value);
+            n->value = NULL;
+        }
+        if (n->label != NULL) {
+            free(n->label);
+            n->label = NULL;
+        }
+        if (n->nodes != NULL) {
+            free(n->nodes);
+            n->nodes = NULL;
+        }
         free(n);
     }
 }

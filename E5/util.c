@@ -1,4 +1,4 @@
-/* autores: José Henrique da Silva Braz & Jeison Casonatti Caroly */
+/* autores: José Henrique da Silva Braz */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,7 +8,7 @@
 #include "asp.h"
 #include "semantic.h"
 #include "hashmap.h"
-#include "instr_lst.h"
+#include "code_gen.h"
 
 void print_tree_children(void *arvore) {
 	int i;
@@ -70,6 +70,18 @@ void exporta(void *arvore) {
     output_code_from_node((node*) arvore);
 }
 
+void free_list(instruction_entry_t *head) {
+    if (head != NULL) {
+        free(head->entry);
+        head->entry = NULL;
+
+        if (head->next != NULL) {
+            free_list(head->next);
+            free(head);
+        }
+    }
+}
+
 void free_tree(void *arvore) {
     int i;
     node *n = (node *) arvore;
@@ -80,6 +92,7 @@ void free_tree(void *arvore) {
     }
     
     free_node(n);
+    free_list(n->code);
 }
 
 void libera(void *arvore) {
