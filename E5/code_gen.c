@@ -28,114 +28,128 @@ int next_label() {
     return last_label++;
 }
 
-node *first_code_block(node *n) {
-    if (n->size == 0) {
-        if (n->code == NULL) {
-            return NULL;
-        } else {
-            return n;
-        }
-    } else {
-        for (int i = 0; i < n->size; i++) {
-            node *code = first_code_block(n->nodes[i]);
-            if (code != NULL) {
-                return code;
-            }
-        }
-        return NULL;
-    }
-}
-
-void add_label_in_instruction(int label, node *n) {
-    instruction_entry_t *instr_label = instr_lst_create_new(generate_label_instruction(label));
-    if (n == NULL) {
-        n->code = instr_label;
-    } else {
-        node *c = first_code_block(n); 
-        c->code = instr_lst_join(instr_label, c->code);
-    }
-}
-
 instruction_entry_t *generate_init_code() {
     int counter = instr_counter;
 
     hashmap_value_t *main_decl = find_declaration("main", NULL);
     if (main_decl == NULL) exit(1);
 
-    instruction_t *rfp_load = generate_instructionI("loadI", EMPTY, 1024, RFP);
-    instruction_t *rsp_load = generate_instructionI("loadI", EMPTY, 1024, RSP);
-    instruction_t *rbss_load = generate_instructionI("loadI", EMPTY, counter + 5, RBSS);
-    instruction_t *jump_main = generate_jumpI(main_decl->fun_label);
-    return instr_lst_create(4, rfp_load, rsp_load, rbss_load, jump_main);
+    instruction_entry_t *rfp_load = generate_instructionI("loadI", EMPTY, 1024, RFP);
+    instruction_entry_t *rsp_load = generate_instructionI("loadI", EMPTY, 1024, RSP);
+    instruction_entry_t *rbss_load = generate_instructionI("loadI", EMPTY, counter + 5, RBSS);
+    instruction_entry_t *jump_main = generate_jumpI(main_decl->fun_label);
+    return instr_lst_join(4, rfp_load, rsp_load, rbss_load, jump_main);
 }
 
-instruction_entry_t *generate_code(
-    char *code, 
-    instruction_entry_t *instr1, 
-    instruction_entry_t *instr2
-) {
-    instruction_t *instr = generate_instruction(code, instr1->entry->op3, instr2->entry->op3, next_reg());
-    return instr_lst_create_new(instr);
+void generate_general_code(char *code, node *b, node *n1, node *n2) {
+    b->reg_result = next_reg();
+    instruction_entry_t *instr = generate_instruction(code, n1->reg_result, n2->reg_result, b->reg_result);
+    b->code = instr_lst_join(3, n1->code, n2->code, instr);
 }
 
-instruction_entry_t *generate_codeI(
-    char *code, 
-    instruction_entry_t *instr1, 
-    instruction_entry_t *instr2
-) {
-    instruction_t *instr = generate_instructionI(code, instr1->entry->op3, instr2->entry->op3, next_reg());
-    return instr_lst_create_new(instr);
+void generate_var_load(node *n) {
+    int reg, offset;
+    char *ident = (char *) n->value;
+    get_var_mem_loc(ident, &reg, &offset);
+    n->reg_result = next_reg();
+    n->code = generate_instructionI("loadAI", reg, offset, n->reg_result);
 }
 
-instruction_entry_t *generate_var_load(char *ident) {
+void generate_literal_load(node *n) {
+    n->reg_result = next_reg();
+    int value = *((int *) n->value);
+    n->code = generate_instructionI("loadI", EMPTY, value, n->reg_result);
+}
+
+void generate_var_assignment(char *ident, node *b, node *init) {
+    if (init->mark == VAR_T) {
+        generate_var_load(init);
+    }
     int reg, offset;
     get_var_mem_loc(ident, &reg, &offset);
-    instruction_t *code = generate_instructionI("loadAI", reg, offset, next_reg());
-    return instr_lst_create_new(code);
+    instruction_entry_t *store_instr = generate_instructionS("storeAI", init->reg_result, reg, offset);
+    b->code = instr_lst_join(2, init->code, store_instr);
 }
 
-instruction_entry_t *generate_literal_load(int value) {
-    instruction_t *code = generate_instructionI("loadI", EMPTY, value, next_reg());
-    return instr_lst_create_new(code);
+void generate_for(node *s, node *s1, node *b, node *s2, node *s3) {
+    int label_start = next_label();
+    int label_true = next_label();
+    int label_end = next_label();
+
+    instruction_entry_t *instr_start_label = generate_label_instruction(label_start);
+    instruction_entry_t *instr_true_label = generate_label_instruction(label_true);
+    instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
+    instruction_entry_t *jump_start = generate_jumpI(label_start);
+
+    bool_lst_remenda(b->true_list, label_true);
+    bool_lst_remenda(b->false_list, label_end);
+
+    s->code = instr_lst_join(8, s1->code, instr_start_label, 
+                                b->code, instr_true_label, 
+                                s3->code, s2->code, 
+                                jump_start, instr_end_label);
 }
 
-instruction_entry_t *generate_var_assignment(char *ident, instruction_entry_t *entry) {
-    int reg, offset;
-    get_var_mem_loc(ident, &reg, &offset);
-    instruction_t *code = generate_instructionS("storeAI", entry->entry->op3, reg, offset);
-    return instr_lst_create_new(code);
+void generate_while(node *s, node *b, node *s1) {
+    int label_start = next_label();
+    int label_true = next_label();
+    int label_end = next_label();
+
+    instruction_entry_t *instr_start_label = generate_label_instruction(label_start);
+    instruction_entry_t *instr_true_label = generate_label_instruction(label_true);
+    instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
+    instruction_entry_t *jump_start = generate_jumpI(label_start);
+
+    bool_lst_remenda(b->true_list, label_true);
+    bool_lst_remenda(b->false_list, label_end);
+
+    s->code = instr_lst_join(6, instr_start_label, b->code, 
+                                instr_true_label, s1->code, 
+                                jump_start, instr_end_label);
 }
 
 void generate_if(node *b, node *e, node *b_true, node *b_false) {
     int label_true = next_label();
-    int label_false = next_label();
-    bool_lst_remenda(e->true_list, label_true);
-    bool_lst_remenda(e->false_list, label_false);
+    int label_end = next_label();
+    
+    instruction_entry_t *instr_true_label = generate_label_instruction(label_true);
+    instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
+    instruction_entry_t *jump_end = generate_jumpI(label_end);
 
-    add_label_in_instruction(label_true, b_true);
     if (b_false != NULL) {
-        add_label_in_instruction(label_false, b_false);
+        int label_false = next_label();
+        instruction_entry_t *instr_false_label = generate_label_instruction(label_false);
+
+        bool_lst_remenda(e->true_list, label_true);
+        bool_lst_remenda(e->false_list, label_false);
+
+        b->code = instr_lst_join(7, e->code, instr_true_label, 
+                                    b_true->code, jump_end, instr_false_label, 
+                                    b_false->code, instr_end_label);
     } else {
-        instruction_entry_t *instr_label = instr_lst_create_new(generate_label_instruction(label_false));
-        b->code = instr_lst_join(b->code, instr_label);
-        print_instr_lst(b->code);
+        bool_lst_remenda(e->true_list, label_true);
+        bool_lst_remenda(e->false_list, label_end);
+
+        b->code = instr_lst_join(4, e->code, instr_true_label, b_true->code, instr_end_label);
     }
 }
 
 void generate_and(node *b, node *b1, node *b2) {
     int label = next_label();
+    instruction_entry_t *label_inst = generate_label_instruction(label);
     bool_lst_remenda(b1->true_list, label);
     b->true_list = b2->true_list;
     b->false_list = bool_lst_concat(b1->false_list, b2->false_list);
-    b1->code = instr_lst_join(b1->code, instr_lst_create_new(generate_label_instruction(label)));
+    b->code = instr_lst_join(3, b1->code, label_inst, b2->code);
 }
 
 void generate_or(node *b, node *b1, node *b2) {
     int label = next_label();
+    instruction_entry_t *label_inst = generate_label_instruction(label);
     bool_lst_remenda(b1->false_list, label);
     b->false_list = b2->false_list;
     b->true_list = bool_lst_concat(b1->true_list, b2->true_list);
-    b1->code = instr_lst_join(b1->code, instr_lst_create_new(generate_label_instruction(label)));
+    b->code = instr_lst_join(3, b1->code, label_inst, b2->code);
 }
 
 void generate_not(node *b, node *b1) {
@@ -145,14 +159,14 @@ void generate_not(node *b, node *b1) {
 
 void generate_true(node *b) {
     int x = bool_lst_next_remendo();
-    b->code = instr_lst_create_new(generate_jumpI(x));
+    b->code = generate_jumpI(x);
     b->true_list = bool_lst_create(1, &(b->code->entry->op3));
     b->false_list = NULL;
 }
 
 void generate_false(node *b) {
     int x = bool_lst_next_remendo();
-    b->code = instr_lst_create_new(generate_jumpI(x));
+    b->code = generate_jumpI(x);
     b->false_list = bool_lst_create(1, &(b->code->entry->op3));
     b->true_list = NULL;
 }
@@ -161,44 +175,28 @@ void generate_relop(char *code, node *parent, node *b1, node *b2) {
     int x = bool_lst_next_remendo();
     int y = bool_lst_next_remendo();
 
-    instruction_entry_t *entry1 = b1->code;
-    instruction_entry_t *entry2 = b2->code;
-
-    instruction_entry_t *cmp_code;
     if (strcmp(code, "EQ") == 0) {
-        cmp_code = generate_code("cmp_EQ", entry1, entry2);
+        generate_general_code("cmp_EQ", parent, b1, b2);
     } else if (strcmp(code, "NE") == 0) {
-        cmp_code = generate_code("cmp_NE", entry1, entry2);
+        generate_general_code("cmp_NE", parent, b1, b2);
     } else if (strcmp(code, "LT") == 0) {
-        cmp_code = generate_code("cmp_LT", entry1, entry2);
+        generate_general_code("cmp_LT", parent, b1, b2);
     } else if (strcmp(code, "LE") == 0) {
-        cmp_code = generate_code("cmp_LE", entry1, entry2);
+        generate_general_code("cmp_LE", parent, b1, b2);
     } else if (strcmp(code, "GT") == 0) {
-        cmp_code = generate_code("cmp_GT", entry1, entry2);
+        generate_general_code("cmp_GT", parent, b1, b2);
     } else if (strcmp(code, "GE") == 0) {
-        cmp_code = generate_code("cmp_GE", entry1, entry2);
+        generate_general_code("cmp_GE", parent, b1, b2);
     } else {
         perror("Code não reconhecido");
         exit(1);
     }
 
-    instruction_t *cbr_code = generate_instructionB(cmp_code->entry->op3, x, y);
+    instruction_entry_t *cbr_code = generate_instructionB(parent->reg_result, x, y);
 
-    parent->code       = instr_lst_join(cmp_code, instr_lst_create_new(cbr_code));
-    parent->true_list  = bool_lst_create(1, &(cbr_code->op2));
-    parent->false_list = bool_lst_create(1, &(cbr_code->op3));
-}
-
-instruction_entry_t *generate_shift(int left, char *ident, int offset) {
-    char *code;
-    if (left == 1) {
-        code = "lshiftI";
-    } else {
-        code = "rshiftI";
-    }
-    instruction_entry_t *load_code = generate_var_load(ident);
-    instruction_t *shift_code = generate_instructionI(code, load_code->entry->op3, offset, next_reg());
-    return instr_lst_join(load_code, instr_lst_create_new(shift_code));
+    parent->code       = instr_lst_join(2, parent->code, cbr_code);
+    parent->true_list  = bool_lst_create(1, &(cbr_code->entry->op2));
+    parent->false_list = bool_lst_create(1, &(cbr_code->entry->op3));
 }
 
 void print_instr_lst(instruction_entry_t *entry) {
@@ -268,7 +266,7 @@ void get_var_mem_loc(char *ident, int *reg, int *offset) {
     *offset = decl->men_offset;
 }
 
-instruction_t *generate_label_instruction(int label) {
+instruction_entry_t *generate_label_instruction(int label) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     instr->op1_type = OT_LABEL;
     instr->op1 = label;
@@ -277,10 +275,10 @@ instruction_t *generate_label_instruction(int label) {
     instr->op3_type = OT_DISABLED;
     instr->op3 = EMPTY;
 
-    return instr;
+    return instr_lst_create_new(instr);
 }
 
-instruction_t *generate_instructionB(int reg, int label1, int label2) {
+instruction_entry_t *generate_instructionB(int reg, int label1, int label2) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "cbr");
     instr->op1_type = OT_REG;
@@ -291,10 +289,10 @@ instruction_t *generate_instructionB(int reg, int label1, int label2) {
     instr->op3 = label2;
 
     instr_counter++;
-    return instr;
+    return instr_lst_create_new(instr);
 }
 
-instruction_t *generate_instruction(char *code, int reg1, int reg2, int reg3) {
+instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int reg3) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, code);
     instr->op1_type = OT_REG;
@@ -305,10 +303,10 @@ instruction_t *generate_instruction(char *code, int reg1, int reg2, int reg3) {
     instr->op3 = reg3;
 
     instr_counter++;
-    return instr;
+    return instr_lst_create_new(instr);
 }
 
-instruction_t *generate_instructionI(char *code, int reg1, int value, int reg3) {
+instruction_entry_t *generate_instructionI(char *code, int reg1, int value, int reg3) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, code);
     instr->op1_type = OT_REG;
@@ -319,10 +317,10 @@ instruction_t *generate_instructionI(char *code, int reg1, int value, int reg3) 
     instr->op3 = reg3;
 
     instr_counter++;
-    return instr;
+    return instr_lst_create_new(instr);
 }
 
-instruction_t *generate_instructionS(char *code, int reg1, int value, int reg3) {
+instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int reg3) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, code);
     instr->op1_type = OT_REG;
@@ -332,10 +330,10 @@ instruction_t *generate_instructionS(char *code, int reg1, int value, int reg3) 
     instr->op3_type = OT_IMED;
     instr->op3 = reg3;
     instr_counter++;
-    return instr;
+    return instr_lst_create_new(instr);
 }
 
-instruction_t *generate_jumpI(int label) {
+instruction_entry_t *generate_jumpI(int label) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "jumpI");
     instr->op1_type = OT_DISABLED;
@@ -344,7 +342,7 @@ instruction_t *generate_jumpI(int label) {
     instr->op2 = EMPTY;
     instr->op3_type = OT_LABEL;
     instr->op3 = label;
-    return instr;
+    return instr_lst_create_new(instr);
 }
 
 void output_code_from_node_rec(node* n) {
@@ -366,7 +364,7 @@ void output_code_from_node_rec(node* n) {
 
 void output_code_from_node(node* n) {
     printf("output_code_from_node\n");
-    instruction_entry_t *init_code = generate_init_code();
-    print_instr_lst(init_code);
-    output_code_from_node_rec(n);
+    // instruction_entry_t *init_code = generate_init_code();
+    // print_instr_lst(init_code);
+    // output_code_from_node_rec(n);
 }

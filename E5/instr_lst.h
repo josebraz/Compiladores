@@ -9,7 +9,7 @@ instruction_entry_t *instr_lst_create(int size, ...);
 
 instruction_entry_t *instr_lst_create_new(instruction_t *new_inst);
 
-instruction_entry_t *instr_lst_join(instruction_entry_t *entry1, instruction_entry_t *entry2);
+instruction_entry_t *instr_lst_join(int size, ...);
 
 instruction_entry_t *instr_lst_add_next(instruction_entry_t *entry, instruction_t *new_inst);
 

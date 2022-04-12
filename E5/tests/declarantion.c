@@ -2,11 +2,13 @@
 int aaaaa;
 
 int main() {
-    int a <= 333;
-    
-    if (60 >= 300 || 50 == 30 || 300 <= 1) {
-        a = 888;
+    int i <= 0;
+    int b <= 0;
+    for (i = 0 : i < 5 : i = i + 1) {
+        b = b + 1;
     };
 
-    int b <= 000;
+    while (true) do {
+        b = 33;
+    };
 }

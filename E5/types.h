@@ -87,6 +87,7 @@ typedef struct node {
     struct node **nodes; // Lista de nodos filhos (pode ser NULL)
     // Parte da geração de código
     instruction_entry_t *code;
+    int reg_result;
     bool_list *true_list;
     bool_list *false_list;
 } node; 

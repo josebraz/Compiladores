@@ -15,7 +15,7 @@ instruction_entry_t *instr_lst_create_new(instruction_t *new_inst) {
     return new_entry;
 }
 
-instruction_entry_t *instr_lst_join(instruction_entry_t *entry1, instruction_entry_t *entry2) {
+instruction_entry_t *instr_lst_join_internal(instruction_entry_t *entry1, instruction_entry_t *entry2) {
     if (entry1 == NULL) {
         return entry2;
     }
@@ -28,14 +28,27 @@ instruction_entry_t *instr_lst_join(instruction_entry_t *entry1, instruction_ent
     return entry1;
 }
 
+instruction_entry_t *instr_lst_join(int size, ...) {
+    instruction_entry_t *instr = NULL;
+    va_list arguments;
+    va_start(arguments, size);
+    if (size >= 1) {
+        instr = (instruction_entry_t*) va_arg(arguments, instruction_entry_t*);
+        for (int i = 0; i < size - 1; i++) {
+            instr = instr_lst_join_internal(instr, (instruction_entry_t*) va_arg(arguments, instruction_entry_t*));
+        }
+    }
+    va_end(arguments);
+    return instr;
+}
+
 instruction_entry_t *instr_lst_create(int size, ...) {
-    int i;
     instruction_t *instr;
     instruction_entry_t *entry, *last_entry = NULL, *first_entry = NULL;
     va_list arguments;
     
     va_start(arguments, size);
-    for (i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         instr = (instruction_t*) va_arg(arguments, instruction_t*);
         entry = instr_lst_create_new(instr);
         if (i == 0) first_entry = entry;

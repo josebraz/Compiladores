@@ -67,7 +67,7 @@ void exporta(void *arvore) {
     // print_tree_labels(arvore);
     generate_dot(arvore);
     print_stack();
-    output_code_from_node((node*) arvore);
+    print_instr_lst(((node*) arvore)->code);
 }
 
 void free_list(instruction_entry_t *head) {
@@ -96,11 +96,11 @@ void free_tree(void *arvore) {
 }
 
 void libera(void *arvore) {
-    free_tree(arvore);
-    for (int i = 0; i < scope_stack->actual_capacity; i++) {
-        hashmap_destroy(scope_stack->entries[i]);
-        scope_stack->entries[i] = NULL;
-    }
-    stack_destroy(scope_stack);
+    // free_tree(arvore);
+    // for (int i = 0; i < scope_stack->actual_capacity; i++) {
+    //     hashmap_destroy(scope_stack->entries[i]);
+    //     scope_stack->entries[i] = NULL;
+    // }
+    // stack_destroy(scope_stack);
 }
 

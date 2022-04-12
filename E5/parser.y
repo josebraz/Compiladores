@@ -127,6 +127,7 @@ prog :
           $$ = fun;
         } else {
           $$ = add_child($1, fun);
+          $$->code = instr_lst_join(2, $$->code, fun->code);
         }
     }
   | prog TK_PR_STATIC type TK_IDENTIFICADOR function_params { 
@@ -137,6 +138,7 @@ prog :
           $$ = fun;
         } else {
           $$ = add_child($1, fun);
+          $$->code = instr_lst_join(2, $$->code, fun->code);
         }
     }
   | { $$ = NULL; };
@@ -195,7 +197,9 @@ statement_block:
   };
     
 statement_list:
-   statement statement_list { $$ = asp_stmt_list($1, $2); } 
+   statement statement_list { 
+        $$ = asp_stmt_list($1, $2); 
+    } 
   | statement;
 
 // Todos os comandos simples da linguagem
@@ -235,7 +239,7 @@ local_decl_list:
             $$ = create_node("<=", DECL_VAR_INIT_T, 3, id_node, $3, $5); 
         }
         ident_var_declaration_init_item($1, $3);
-        $$->code = generate_var_assignment($1, $3->code);
+        generate_var_assignment($1, $$, $3);
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list { 
     printf("AAAAA\n");
@@ -243,21 +247,19 @@ local_decl_list:
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
         if ($5 == NULL) {
-            $$ = create_node("<=", DECL_VAR_INIT_T, 2, dest_node, source_node); 
+            $$ = create_node("<generate_var_assignment=", DECL_VAR_INIT_T, 2, dest_node, source_node); 
         } else {
             $$ = create_node("<=", DECL_VAR_INIT_T, 3, dest_node, source_node, $5); 
         }
         ident_var_declaration_init_item($1, source_node);
-        instruction_entry_t *load_code = generate_var_load($3);
-        instruction_entry_t *assignment_code = generate_var_assignment($1, load_code);
-        $$->code = instr_lst_join(load_code, assignment_code);
+        generate_var_assignment($1, $$, source_node);
     } 
   | TK_IDENTIFICADOR TK_OC_LE literal { 
         free($2);
         node *id_node = create_leaf_id($1); 
         $$ = create_node("<=", DECL_VAR_INIT_T, 2, id_node, $3); 
         ident_var_declaration_init_item($1, $3);
-        $$->code = generate_var_assignment($1, $3->code);
+        generate_var_assignment($1, $$, $3);
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR { 
         free($2);
@@ -265,9 +267,7 @@ local_decl_list:
         node *source_node = create_leaf_id($3); 
         $$ = create_node("<=", DECL_VAR_INIT_T, 2, dest_node, source_node);  
         ident_var_declaration_init_item($1, source_node);
-        instruction_entry_t *load_code = generate_var_load($3);
-        instruction_entry_t *assignment_code = generate_var_assignment($1, load_code);
-        $$->code = instr_lst_join(load_code, assignment_code);
+        generate_var_assignment($1, $$, source_node);
     };
 
 // Comando de atribuição (depois de declarar)
@@ -276,7 +276,7 @@ assignment:
         node *id_node = create_leaf_id($1); 
         $$ = create_node("=", STMT_T, 2, id_node, $3); 
         ident_var_set($1, $3);
-        $$->code = generate_var_assignment($1, $3->code);
+        generate_var_assignment($1, $$, $3);
     } 
   | TK_IDENTIFICADOR '[' expression ']' '=' expression { 
         node *id_node = create_leaf_id($1); 
@@ -326,7 +326,6 @@ shift:
         verify_shift($3);
         literal_use(offset);
         free($2);
-        $$->code = generate_shift(1, $1, $3);
     }
   | TK_IDENTIFICADOR '[' expression ']' TK_OC_SL TK_LIT_INT {
         node *id_node = create_leaf_id($1); 
@@ -346,7 +345,6 @@ shift:
         verify_shift($3);
         literal_use(offset);
         free($2);
-        $$->code = generate_shift(0, $1, $3);
     }
   | TK_IDENTIFICADOR '[' expression ']' TK_OC_SR TK_LIT_INT {
         node *id_node = create_leaf_id($1); 
@@ -379,11 +377,13 @@ control_if:
 control_for:
     TK_PR_FOR '(' assignment ':' expression ':' assignment ')' statement_block {
         $$ = create_node("for", STMT_T, 4, $3, $5, $7, $9); 
+        generate_for($$, $3, $5, $7, $9);
     };    
 
 control_while:
     TK_PR_WHILE '(' expression ')' TK_PR_DO statement_block {
         $$ = create_node("while", STMT_T, 2, $3, $6); 
+        generate_while($$, $3, $6);
     };
 
 control_jump:
@@ -423,14 +423,14 @@ expression9:
 expression8:
     expression8 '|' expression7 { 
         $$ = create_node_binary_ope("|", $1, $3); 
-        $$->code = generate_code("or", $1->code, $3->code);
+        generate_general_code("or", $$, $1, $3);
     } 
   | expression7;
 
 expression7:
     expression7 '&' expression6 { 
         $$ = create_node_binary_ope("&", $1, $3); 
-        $$->code = generate_code("and", $1->code, $3->code);
+        generate_general_code("and", $$, $1, $3);
     } 
   | expression6;
 
@@ -471,22 +471,22 @@ expression5:
 expression4:
     expression4 '+' expression3 { 
         $$ = create_node_binary_ope("+", $1, $3);
-        $$->code = generate_code("add", $1->code, $3->code);
+        generate_general_code("add", $$, $1, $3);
     } 
   | expression4 '-' expression3 { 
         $$ = create_node_binary_ope("-", $1, $3);
-        $$->code = generate_code("sub", $1->code, $3->code);
+        generate_general_code("sub", $$, $1, $3);
     } 
   | expression3;
     
 expression3:
     expression3 '*' expression2 { 
         $$ = create_node_binary_ope("*", $1, $3); 
-        $$->code = generate_code("mult", $1->code, $3->code);
+        generate_general_code("mult", $$, $1, $3);
     } 
   | expression3 '/' expression2 { 
         $$ = create_node_binary_ope("/", $1, $3);
-        $$->code = generate_code("div", $1->code, $3->code);
+        generate_general_code("div", $$, $1, $3);
     } 
   | expression3 '%' expression2 { 
         $$ = create_node_binary_ope("%", $1, $3); 
@@ -521,12 +521,12 @@ operand:
     TK_IDENTIFICADOR { 
         $$ = create_leaf_id($1); 
         ident_var_use($1);
-        $$->code = generate_var_load($1);
+        generate_var_load($$);
     } 
   | TK_LIT_INT { 
         $$ = create_leaf_int($1); 
         literal_use($$); 
-        $$->code = generate_literal_load($1);
+        generate_literal_load($$);
     } 
   | TK_LIT_FLOAT { 
         $$ = create_leaf_float($1); 
@@ -554,7 +554,7 @@ literal:
     TK_LIT_INT { 
         $$ = create_leaf_int($1); 
         literal_use($$); 
-        $$->code = generate_literal_load($1);
+        generate_literal_load($$);
     } 
   | TK_LIT_FLOAT { 
         $$ = create_leaf_float($1); 

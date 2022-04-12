@@ -6,15 +6,18 @@
 #include <stdarg.h>
 
 #include "asp.h"
+#include "instr_lst.h"
 #include "types.h"
 
 node *asp_stmt_list(node *head, node *tail) {
     if (head == NULL) return tail;
     if (head->size <= 1) {
         add_child(head, tail);
+        head->code = instr_lst_join(2, head->code, tail->code);
     } else {
         node *last_head = find_last_node_not_leaf(head);
         add_child(last_head, tail);
+        last_head->code = instr_lst_join(2, last_head->code, tail->code);
     }
     
     return head;
@@ -26,27 +29,6 @@ node *next_node(node *parent) {
     } else {
         return NULL;
     }
-}
-
-node *remove_uninit_decl_var(node *n) {
-    node *root = NULL;
-    node *parent = NULL;
-    node *p = n;
-    while (p != NULL) {
-        if (p->mark == DECL_VAR_T && parent != NULL) {
-            parent->nodes[parent->size-1] = p->nodes[p->size-1];
-            free_node(p);
-        }
-        if (p->mark != DECL_VAR_T) {
-            parent = p;
-            if (root == NULL) {
-                root = p;
-            }
-        }
-        
-        p = next_node(p);
-    }
-    return root;
 }
 
 int remove_child(node *parent, node *to_remove) {
