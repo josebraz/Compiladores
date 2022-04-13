@@ -7,16 +7,14 @@
 
 node *asp_stmt_list(node *head, node *tail);
 
-node *next_statement(node *parent);
-
 /**
  * adiciona um filho ao pai
  * 
  * @param father o nodo pai
- * @param child o nodo que vai ser filho do pai
+ * @param next o nodo que vai ser filho do pai
  * @return node* 
  */
-node *add_child(node* father, node* child);
+node *add_next(node* father, node* next);
 
 /**
  * Remove um nodo to_remove do nodo parent
@@ -119,7 +117,7 @@ node* create_leaf(void *value, char* label);
  * @param value 
  * @return node* a nova folha criada
  */
-node* create_leaf_type(char *ident, enum data_type type);
+node* create_leaf_decl_type(char *ident, enum data_type type);
 
 node* create_node_array_decl(char *ident, int size);
 
@@ -163,8 +161,6 @@ node* create_leaf_bool(int value, char* label);
  * @return node* a nova folha criada
  */
 node* create_leaf_id(char *value);
-
-node* create_leaf_decl_var(char *value);
 
 /**
  * Cria uma nova folha do tipo string

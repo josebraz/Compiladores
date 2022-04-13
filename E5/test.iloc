@@ -1,0 +1,54 @@
+loadI 1024 => rfp
+loadI 1024 => rsp
+loadI 51 => rbss
+jumpI  => L4
+L0:                           // Declaração da função fibonacci
+i2i rsp => rfp
+addI rsp, 20 => rsp
+loadAI rfp, 12 => r0          // Carrega variável n
+loadI 1 => r1
+cmp_EQ r0, r1 => r2
+cbr r2 => L1, L3
+L1:                           // Label true do if
+loadI 1 => r3                 // Início do retorno de local
+storeAI r3 => rfp, 16         // Escreve o valor de retorno na pilha
+loadAI rfp, 0 => r4           // Carrega end de retorno
+loadAI rfp, 4 => r5           // Carrega ultimo RSP
+loadAI rfp, 8 => r6           // Carrega ultimo RFP
+i2i r5 => rsp
+i2i r6 => rfp
+jump  => r4
+jumpI  => L2
+L3:                           // Label false do if
+loadAI rfp, 12 => r7          // Início do retorno de local
+storeAI rsp => rsp, 4         // Inicio da chamada de fibonacci()
+storeAI rfp => rsp, 8
+loadAI rfp, 12 => r8          // Carrega variável n
+loadI 1 => r9
+sub r8, r9 => r10
+storeAI r10 => rsp, 12        // grava o parametro 1 da função
+addI rpc, 3 => r11
+storeAI r11 => rsp, 0
+jumpI  => L0                  // Salta para a função fibonacci()
+loadAI rsp, 12 => r12         // Carrega o valor de retorno de fibonacci()
+add r7, r12 => r13
+storeAI r13 => rfp, 16        // Escreve o valor de retorno na pilha
+loadAI rfp, 0 => r14          // Carrega end de retorno
+loadAI rfp, 4 => r15          // Carrega ultimo RSP
+loadAI rfp, 8 => r16          // Carrega ultimo RFP
+i2i r15 => rsp
+i2i r16 => rfp
+jump  => r14
+L2:                           // Label de final do if
+L4:                           // Declaração da função main
+i2i rsp => rfp
+addI rsp, 20 => rsp
+storeAI rsp => rsp, 4         // Inicio da chamada de fibonacci()
+storeAI rfp => rsp, 8
+loadI 5 => r17
+storeAI r17 => rsp, 12        // grava o parametro 1 da função
+addI rpc, 3 => r18
+storeAI r18 => rsp, 0
+jumpI  => L0                  // Salta para a função fibonacci()
+loadAI rsp, 16 => r19         // Carrega o valor de retorno de fibonacci()
+storeAI r19 => rfp, 12        // Grava variável x

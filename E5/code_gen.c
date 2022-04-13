@@ -54,8 +54,13 @@ void generate_var_load(node *n) {
     int reg, offset;
     char *ident = (char *) n->value;
     get_var_mem_loc(ident, &reg, &offset);
+
     n->reg_result = next_reg();
-    n->code = generate_instructionI("loadAI", reg, offset, n->reg_result);
+
+    instruction_entry_t *store_instr = generate_instructionI("loadAI", reg, offset, n->reg_result);
+    comment_instruction(store_instr, "Carrega variável %s", ident);
+
+    n->code = store_instr;
 }
 
 void generate_literal_load(node *n) {
@@ -71,6 +76,8 @@ void generate_var_assignment(char *ident, node *b, node *init) {
     int reg, offset;
     get_var_mem_loc(ident, &reg, &offset);
     instruction_entry_t *store_instr = generate_instructionS("storeAI", init->reg_result, reg, offset);
+    comment_instruction(store_instr, "Grava variável %s", ident);
+
     b->code = instr_lst_join(2, init->code, store_instr);
 }
 
@@ -121,6 +128,11 @@ void generate_fun_decl(node *fun) {
     comment_instruction(instr_fun_label, "Declaração da função %s", fun_name);
     
     fun->code = instr_lst_join(4, instr_fun_label, update_rfp, update_rsp, fun->nodes[0]->code);
+    if (strcmp(fun_name, "main") == 0) {
+        // quando acabar a main a gente acaba a máquina com um halt
+        instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
+        fun->code = instr_lst_join(2, fun->code, instr_halt);
+    }
 }
 
 void generate_fun_call(node *s, node *params) {
@@ -133,21 +145,21 @@ void generate_fun_call(node *s, node *params) {
 
     // para cada parametro da função cria um store
     int param_offset = 12;
-    instruction_entry_t *param_lst = NULL;
+    instruction_entry_t *param_lst = params->code;
     node *p = params;
     while (p != NULL) {
         instruction_entry_t *p_store = generate_instructionS("storeAI", p->reg_result, RSP, param_offset);
         comment_instruction(p_store, "grava o parametro %d da função", (param_offset - 12) / 4 + 1);
-        param_lst = instr_lst_join(3, param_lst, p->code, p_store);
+        param_lst = instr_lst_join(2, param_lst, p_store);
         param_offset += 4;
-        p = next_statement(p);
+        p = p->next;
     }
 
     // prepara o endereço de retorno que é após essas 2 instr e do jump
     int ret_end_reg = next_reg();
     instruction_entry_t *cal_ret_end = generate_instructionI("addI", RPC, 3, ret_end_reg);
     instruction_entry_t *store_ret_end = generate_instructionS("storeAI", ret_end_reg, RSP, 0);
-    instruction_entry_t *jump_start = generate_jumpI(fun_decl->fun_label);
+    instruction_entry_t *jump_fun = generate_jumpI(fun_decl->fun_label);
 
     int ret_value_reg = next_reg();
     int return_value_end = fun_decl->men_size + 3 * 4;
@@ -155,11 +167,12 @@ void generate_fun_call(node *s, node *params) {
 
     comment_instruction(store_rsp, "Inicio da chamada de %s()", fun_name);
     comment_instruction(load_return_value, "Carrega o valor de retorno de %s()", fun_name);
+    comment_instruction(jump_fun, "Salta para a função %s()", fun_name);
 
     s->reg_result = ret_value_reg;
     s->code = instr_lst_join(7, store_rsp, store_rfp, 
                                 param_lst, cal_ret_end,
-                                store_ret_end, jump_start, load_return_value);
+                                store_ret_end, jump_fun, load_return_value);
 }
 
 void generate_for(node *s, node *s1, node *b, node *s2, node *s3) {
@@ -216,7 +229,7 @@ void generate_if(node *b, node *e, node *b_true, node *b_false) {
     instruction_entry_t *jump_end = generate_jumpI(label_end);
 
     comment_instruction(instr_true_label, "Label true do if");
-    comment_instruction(instr_true_label, "Label de final do if");
+    comment_instruction(instr_end_label, "Label de final do if");
 
     if (b_false != NULL) {
         int label_false = next_label();
@@ -342,6 +355,8 @@ void print_instruction(instruction_t *inst) {
         char_counter += print_instr_param(inst->op2, inst->op2_type);
         char_counter += printf(", ");
         char_counter += print_instr_param(inst->op3, inst->op3_type);
+    } else if (strcmp(inst->code, "halt") == 0 || strcmp(inst->code, "nop") == 0) { 
+        char_counter += printf("%s", inst->code);
     } else {
         char_counter += printf("%s ", inst->code);
         if (inst->op1_type != OT_DISABLED && inst->op1 != EMPTY) {
@@ -484,26 +499,3 @@ instruction_entry_t *generate_jumpI(int label) {
     return instr_lst_create_new(instr);
 }
 
-void output_code_from_node_rec(node* n) {
-    int max;
-    if (n == NULL) return;
-    if (n->size > 0 && n->nodes[n->size-1]->mark == STMT_T) {
-        max = n->size-1;
-    } else {
-        max = n->size;
-    }
-    for (int i = 0; i < max; i++) {
-        output_code_from_node_rec(n->nodes[i]);
-    }
-    print_instr_lst(n->code);
-    if (max != n->size) {
-        output_code_from_node_rec(n->nodes[n->size-1]);
-    }
-}
-
-void output_code_from_node(node* n) {
-    printf("output_code_from_node\n");
-    // instruction_entry_t *init_code = generate_init_code();
-    // print_instr_lst(init_code);
-    // output_code_from_node_rec(n);
-}

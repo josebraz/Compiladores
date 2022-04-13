@@ -65,8 +65,6 @@ void print_instr_lst(instruction_entry_t *entry);
 
 void print_instruction(instruction_t *new_inst);
 
-void output_code_from_node(node* n);
-
 #endif
 
 

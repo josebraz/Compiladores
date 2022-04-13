@@ -86,6 +86,7 @@ typedef struct node {
     enum node_mark mark; // Marcação do nodo, para controles da criação da AST
     enum data_type type; // O tipo do dado
     struct node **nodes; // Lista de nodos filhos (pode ser NULL)
+    struct node *next;   // representa o próximo nodo da lista
     // Parte da geração de código
     instruction_entry_t *code;
     int reg_result;

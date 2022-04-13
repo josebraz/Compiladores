@@ -11,29 +11,16 @@
 
 node *asp_stmt_list(node *head, node *tail) {
     if (head == NULL) return tail;
-    if (head->size <= 1) {
-        add_child(head, tail);
+    if (head->next == NULL) {
+        add_next(head, tail);
         head->code = instr_lst_join(2, head->code, tail->code);
     } else {
         node *last_head = find_last_node_not_leaf(head);
-        add_child(last_head, tail);
+        add_next(last_head, tail);
         last_head->code = instr_lst_join(2, last_head->code, tail->code);
     }
     
     return head;
-}
-
-node *next_statement(node *parent) {
-    if (parent->size > 0 && parent->nodes != NULL) {
-        node *next = parent->nodes[parent->size-1];
-        if (next->mark == STMT_T) {
-            return next;
-        } else {
-            return NULL;
-        }
-    } else {
-        return NULL;
-    }
 }
 
 int remove_child(node *parent, node *to_remove) {
@@ -74,24 +61,9 @@ int remove_child(node *parent, node *to_remove) {
     }
 }
 
-node *add_child(node *father, node *child) {
-    if (father == NULL || child == NULL) return NULL;
-    
-    int i;
-    int size = father->size;
-    struct node **new_childrens = (struct node**) calloc(size + 1, sizeof(node*));
-    for (i = 0; i < size; i++) {
-        new_childrens[i] = father->nodes[i];
-    }
-    new_childrens[size] = child;
-    
-    if (father->nodes != NULL) {
-        free(father->nodes);
-    }
-    
-    father->nodes = new_childrens;
-    father->size = size + 1;
-
+node *add_next(node *father, node *next) {
+    if (father == NULL) return father;
+    father->next = next;
     return father;
 }
 
@@ -113,6 +85,9 @@ void print_node(node *node) {
                     printf("NULL, ");
                 }
             }
+            if (node->next != NULL) {
+                printf("NEXT: %s, ", node->next->label);
+            }
         } else {
             printf("NULL");
         }
@@ -124,17 +99,11 @@ node* find_last_node_not_leaf(node *parent) {
     if (parent == NULL) return NULL;
     if (parent->mark == EXPRES_T) return NULL;
     
-    if (parent->size > 0) { // o nodo está no meio, chama recursão
-        node *child = parent->nodes[parent->size-1];
-        node *fold = find_last_node_not_leaf(child);
-
-        if (fold == NULL) {
-            return parent;
-        } else {
-            return fold;
-        }
-    } else { // o nodo é folha
-        return NULL;
+    node *fold = find_last_node_not_leaf(parent->next);
+    if (fold == NULL) {
+        return parent;
+    } else {
+        return fold;
     }
 }
 
@@ -149,6 +118,13 @@ node* create_node(char *label, enum node_mark mark, int nodes, ...) {
     new_node->size = nodes;
     new_node->value = NULL;
     new_node->mark = mark;
+    new_node->type = DT_UNKNOWN;
+    new_node->next = NULL;
+    new_node->code = NULL;
+    new_node->reg_result = -1;
+    new_node->true_list = NULL;
+    new_node->false_list = NULL;
+
     
     new_node->nodes = (struct node**) calloc(nodes, sizeof(node*));
     for (i = 0; i < nodes; i++) {
@@ -191,13 +167,19 @@ node* create_leaf(void *value, char* label) {
     new_leaf->nodes = NULL;
     new_leaf->mark = LITERAL_T;
     new_leaf->type = DT_UNKNOWN;
+    new_leaf->next = NULL;
+    new_leaf->code = NULL;
+    new_leaf->reg_result = -1;
+    new_leaf->true_list = NULL;
+    new_leaf->false_list = NULL;
 
     return new_leaf;
 }
 
-node* create_leaf_type(char *ident, enum data_type type) {
+node* create_leaf_decl_type(char *ident, enum data_type type) {
     node *leaf = create_leaf((void *) ident, strdup(ident));
     leaf->type = type;
+    leaf->mark = DECL_VAR_T;
     return leaf;
 }
 
@@ -252,12 +234,6 @@ node* create_leaf_id(char *value) {
     return id;
 }
 
-node* create_leaf_decl_var(char *value) {
-    node *id = create_leaf((void *) value, strdup(value));
-    id->mark = DECL_VAR_T;
-    return id;
-}
-
 node* create_leaf_string(char *value) {
     node *id = create_leaf((void *) value, strdup(value));
     id->type = DT_STRING;
@@ -270,7 +246,7 @@ node* create_leaf_fun_call(char *value, node* params) {
     strcat(label, value);
     node *leaf = create_leaf((void *) value, label);
     if (params != NULL) {
-        add_child(leaf, params);
+        add_next(leaf, params);
     }
     leaf->mark = FUN_CALL_T;
     return leaf;

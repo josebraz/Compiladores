@@ -13,11 +13,15 @@
 //     x = foo(x); 
 // }
 
-int foo(int y, int x) { 
-    return y + x; 
+int fibonacci(int n) {
+    if (n == 1) {
+        return 1;
+    } else {
+        return n + fibonacci(n-1);
+    };
 }
 
 int main() { 
     int x;
-    x = foo(5, 10); 
+    x = fibonacci(2); 
 }

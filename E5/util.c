@@ -17,11 +17,19 @@ void print_tree_children(void *arvore) {
     if (n == NULL) return;
     
     for (i = 0; i < n->size; i++) {
-        if (n->nodes[i] != NULL)
+        if (n->nodes[i] != NULL) {
             printf("%p, %p\n", n, n->nodes[i]);
+        }
     }
+    if (n->next != NULL) {
+        printf("%p, %p\n", n, n->next);
+    }
+
     for (i = 0; i < n->size; i++) {
         print_tree_children(n->nodes[i]);
+    }
+    if (n->next != NULL) {
+        print_tree_children(n->next);
     }
 }
 
@@ -35,6 +43,9 @@ void print_tree_labels(void *arvore) {
     
     for (i = 0; i < n->size; i++) {
         print_tree_labels(n->nodes[i]);
+    }
+    if (n->next != NULL) {
+        print_tree_labels(n->next);
     }
 }
 
@@ -51,8 +62,15 @@ void generate_dot_rec(void *arvore) {
             printf("\t%ld -> %ld\n", n, n->nodes[i]);
         }
     }
+    if (n->next != NULL) {
+        printf("\t%ld -> %ld\n", n, n->next);
+    }
+
     for (i = 0; i < n->size; i++) {
         generate_dot_rec(n->nodes[i]);
+    }
+    if (n->next != NULL) {
+        generate_dot_rec(n->next);
     }
 }
 
@@ -65,7 +83,7 @@ void generate_dot(void *arvore) {
 void exporta(void *arvore) {
     // print_tree_children(arvore);
     // print_tree_labels(arvore);
-    // generate_dot(arvore);
+    generate_dot(arvore);
     // print_stack();
     print_instr_lst(((node*) arvore)->code);
 }
@@ -89,6 +107,9 @@ void free_tree(void *arvore) {
     if (n == NULL) return;
     for (i = 0; i < n->size; i++) {
         free_tree(n->nodes[i]);
+    }
+    if (n->next != NULL) {
+        free_tree(n->next);
     }
     
     free_node(n);

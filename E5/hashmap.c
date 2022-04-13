@@ -110,7 +110,7 @@ void hashmap_put(hashmap_t *map, const char *key, hashmap_value_t *value) {
         all_conflits += conflits;
     }
 
-    entry = (hashmap_entry_t *) malloc(sizeof(hashmap_entry_t));
+    entry = (hashmap_entry_t *) calloc(1, sizeof(hashmap_entry_t));
     memcpy(entry->key, key, strlen(key));
     entry->value = value;
     map->values[index] = entry;

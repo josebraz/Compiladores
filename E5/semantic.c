@@ -117,7 +117,7 @@ void exit_scope() {
         hashmap_value_t *value = hashmap_get(out_scope, current_scope->label);
         value->men_size = current_scope->offset;
     }
-    // hashmap_print(current_scope);
+    hashmap_print(current_scope);
     hashmap_destroy(current_scope);
 }
 
@@ -211,7 +211,7 @@ void ident_var_array_global_decl_list(
             int vector_size = *((int *) p->nodes[1]->value);
             ident_vector_declaration(p->nodes[0]->label, type, is_static, vector_size);
         }
-        p = next_statement(p);
+        p = p->next;
     } 
 }
 
@@ -230,6 +230,8 @@ void ident_fun_declaration(
 
     enter_scope(ident);
 
+    print_node(params);
+
     list_t *args = list_init();
     node *p = params;
     while (p != NULL) {
@@ -245,8 +247,10 @@ void ident_fun_declaration(
         list_add(args, decl);
         ident_var_declaration(decl->ident, decl->decl_type, decl->is_static);
 
-        p = next_statement(p);
+        p = p->next;
     }       
+
+    list_print(args);
 
     hashmap_value_t *value = create_hashmap_value(return_type, NT_FUNCTION, 0, args);
     value->fun_label = label;
@@ -332,7 +336,7 @@ void ident_fun_use(char *ident, node *params) {
             show_error_message(ERR_WRONG_TYPE_ARGS, "Tipo errado para a função \"%s\"", ident);
         }
         p_index++;
-        p = next_statement(p);
+        p = p->next;
     }
     if (value->args->size > p_index) {
         show_error_message(ERR_MISSING_ARGS, "Argumentos faltantes na chamada da função \"%s\"", ident);

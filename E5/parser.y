@@ -130,7 +130,7 @@ prog :
         if ($1 == NULL) {
           $$ = fun;
         } else {
-          $$ = add_child($1, fun);
+          $$ = add_next($1, fun);
           $$->code = instr_lst_join(2, $$->code, fun->code);
         }
         exit_scope();
@@ -143,7 +143,7 @@ prog :
         if ($1 == NULL) {
           $$ = fun;
         } else {
-          $$ = add_child($1, fun);
+          $$ = add_next($1, fun);
           $$->code = instr_lst_join(2, $$->code, fun->code);
         }
         exit_scope();
@@ -158,11 +158,11 @@ global_decl :
 global_decl_list : 
     TK_IDENTIFICADOR ',' global_decl_list {
         node *id_node = create_leaf_id($1); 
-        $$ = add_child(id_node, $3);
+        $$ = add_next(id_node, $3);
     }
   | TK_IDENTIFICADOR '[' TK_LIT_INT ']' ',' global_decl_list {
         node *array_node = create_node_array_decl($1, $3);
-        $$ = add_child(array_node, $6);
+        $$ = add_next(array_node, $6);
         literal_use(array_node->nodes[1]); 
     }
   | TK_IDENTIFICADOR { $$ = create_leaf_id($1); }
@@ -178,15 +178,15 @@ function_params:
 
 function_params_list: 
     type TK_IDENTIFICADOR ',' function_params_list { 
-        node *id_node = create_leaf_type($2, $1); 
-        $$ = add_child(id_node, $4);
+        node *id_node = create_leaf_decl_type($2, $1); 
+        $$ = add_next(id_node, $4);
     }
   | TK_PR_CONST type TK_IDENTIFICADOR ',' function_params_list { 
-        node *id_node = create_leaf_type($3, $2); 
-        $$ = add_child(id_node, $5);
+        node *id_node = create_leaf_decl_type($3, $2); 
+        $$ = add_next(id_node, $5);
     }
-  | type TK_IDENTIFICADOR { $$ = create_leaf_type($2, $1); }
-  | TK_PR_CONST type TK_IDENTIFICADOR { $$ = create_leaf_type($3, $2); };  
+  | type TK_IDENTIFICADOR { $$ = create_leaf_decl_type($2, $1); }
+  | TK_PR_CONST type TK_IDENTIFICADOR { $$ = create_leaf_decl_type($3, $2); };  
 
 function_body: 
     '{' '}' { $$ = NULL; }
@@ -323,7 +323,7 @@ function_call:
 
 function_call_list:
     expression ',' function_call_list { 
-        $$ = add_child($1, $3);
+        $$ = add_next($1, $3);
         $$->code = instr_lst_join(2, $$->code, $3->code);
     }
   | expression { $$ = $1; } ;
