@@ -113,33 +113,40 @@
 %%
 
 // Única entrada, para setar a arvore
-s : { semantic_init(); } prog { arvore = $2; };
+s : { semantic_init(); } prog { 
+      arvore = $2; 
+      $2->code = instr_lst_join(2, generate_init_code(), $2->code); 
+  };
 
 // O programa é um conjunto de declarações globais e
 // declarações de funções, também é aceito uma linguagem vazia 
 prog : 
     prog global_decl { $$ = $1; }
   | prog type TK_IDENTIFICADOR function_params { 
-        ident_fun_declaration($3, $2, $4);
+        ident_fun_declaration($3, $2, $4, next_label());
     } function_body { 
         node *fun = create_node_function($3, $6); 
+        generate_fun_decl(fun);
         if ($1 == NULL) {
           $$ = fun;
         } else {
           $$ = add_child($1, fun);
           $$->code = instr_lst_join(2, $$->code, fun->code);
         }
+        exit_scope();
     }
   | prog TK_PR_STATIC type TK_IDENTIFICADOR function_params { 
-        ident_fun_declaration($4, $3, $5);
+        ident_fun_declaration($4, $3, $5, next_label());
     } function_body { 
         node *fun = create_node_function($4, $7); 
+        generate_fun_decl(fun);
         if ($1 == NULL) {
           $$ = fun;
         } else {
           $$ = add_child($1, fun);
           $$->code = instr_lst_join(2, $$->code, fun->code);
         }
+        exit_scope();
     }
   | { $$ = NULL; };
 
@@ -185,7 +192,6 @@ function_body:
     '{' '}' { $$ = NULL; }
   | '{' statement_list '}' { 
         $$ = $2;
-        exit_scope();
   };
 
 // Lista de comandos da linguagem
@@ -230,7 +236,6 @@ local_decl_list:
         ident_var_declaration_item($1);
     }
   | TK_IDENTIFICADOR TK_OC_LE literal ',' local_decl_list { 
-        printf("AAAAA\n");
         free($2);
         node *id_node = create_leaf_id($1); 
         if ($5 == NULL) {
@@ -242,7 +247,6 @@ local_decl_list:
         generate_var_assignment($1, $$, $3);
     } 
   | TK_IDENTIFICADOR TK_OC_LE TK_IDENTIFICADOR ',' local_decl_list { 
-    printf("AAAAA\n");
         free($2);
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
@@ -306,14 +310,22 @@ in_out:
 
 // Chamada de uma função com 0 ou mais argumentos sepados por vígula
 function_call:
-    TK_IDENTIFICADOR '(' ')' { $$ = create_leaf_fun_call($1, NULL); }
+    TK_IDENTIFICADOR '(' ')' { 
+        $$ = create_leaf_fun_call($1, NULL); 
+        ident_fun_use($1, NULL);
+        generate_fun_call($$, NULL);
+    }
   | TK_IDENTIFICADOR '(' function_call_list ')' { 
         $$ = create_leaf_fun_call($1, $3); 
         ident_fun_use($1, $3);
+        generate_fun_call($$, $3);
     };
 
 function_call_list:
-    expression ',' function_call_list { $$ = add_child($1, $3); }
+    expression ',' function_call_list { 
+        $$ = add_child($1, $3);
+        $$->code = instr_lst_join(2, $$->code, $3->code);
+    }
   | expression { $$ = $1; } ;
 
 // Operador de shift com suporte a lista
@@ -390,6 +402,7 @@ control_jump:
     TK_PR_RETURN expression { 
         $$ = create_node("return", STMT_T, 1, $2); 
         verify_return($2);
+        generate_fun_return($$, $2);
     }
   | TK_PR_BREAK { $$ = create_node("break", STMT_T, 0); }
   | TK_PR_CONTINUE { $$ = create_node("continue", STMT_T, 0); }

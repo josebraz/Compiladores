@@ -12,6 +12,8 @@
 #include "hashmap.h"
 #include "errors.h"
 
+stack_t* scope_stack;
+
 extern int get_line_number(void);
 
 void hashmap_print(hashmap_t *map);
@@ -57,9 +59,9 @@ void show_error_message(int code, char *message, ...) {
 
 // Guardam a informação dos tipo e atributos de 
 // uma lista de declaração de variáveis
-int is_static_decl;
-int is_const_delc;
-enum data_type type_decl;
+int is_static_decl = 0;
+int is_const_delc = 0;
+enum data_type type_decl = DT_INTEGER;
 
 void init_decl_list(int is_static, int is_const, enum data_type type) {
     is_static_decl = is_static;
@@ -80,6 +82,7 @@ hashmap_value_t *create_hashmap_value(
     value->type = type;
     value->args = args;
     value->fun_label = -1;
+    value->men_offset = 0;
 
     return value;
 }
@@ -88,6 +91,10 @@ void semantic_init() {
     scope_stack = stack_init();
     hashmap_t* global_table = hashmap_init("global");
     stack_push(scope_stack, global_table);
+}
+
+stack_entry_t *current_scope() {
+    return stack_peek(scope_stack);
 }
 
 void enter_scope(char *label) {
@@ -105,8 +112,12 @@ void exit_scope() {
     hashmap_t *out_scope = stack_peek(scope_stack);
     if (strcmp(out_scope->label, "global") != 0) {
         out_scope->offset = current_scope->offset;
+    } else {
+        // Saiu de um função e o out_scope é o global
+        hashmap_value_t *value = hashmap_get(out_scope, current_scope->label);
+        value->men_size = current_scope->offset;
     }
-    hashmap_print(current_scope);
+    // hashmap_print(current_scope);
     hashmap_destroy(current_scope);
 }
 
@@ -142,6 +153,7 @@ hashmap_value_t *ident_var_declaration(
     int is_static
 ) {
     hashmap_t *current_scope = stack_peek(scope_stack);
+    if (current_scope == NULL) return NULL;
     verify_alread_declared(current_scope, ident);
 
     hashmap_value_t *value = create_hashmap_value(type, NT_VARIABLE, 1, NULL);
@@ -199,14 +211,15 @@ void ident_var_array_global_decl_list(
             int vector_size = *((int *) p->nodes[1]->value);
             ident_vector_declaration(p->nodes[0]->label, type, is_static, vector_size);
         }
-        p = next_node(p);
+        p = next_statement(p);
     } 
 }
 
 void ident_fun_declaration(
     char *ident,
     enum data_type return_type,
-    node *params
+    node *params,
+    int label
 ) {
     hashmap_t *current_scope = stack_peek(scope_stack);
     verify_alread_declared(current_scope, ident);
@@ -218,26 +231,25 @@ void ident_fun_declaration(
     enter_scope(ident);
 
     list_t *args = list_init();
-    if (params != NULL) {
-        node *p = params;
-        while (p != NULL) {
-            if (p->type == DT_STRING) {
-                show_error_message(ERR_FUNCTION_STRING, "Erro ao declarar \"%s\" - String não pode ser um parâmetro de função", ident);
-            }
-            declaration_type_t *decl = (declaration_type_t*) malloc(sizeof(declaration_type_t));
-            decl->decl_type = p->type;
-            decl->ident = p->label;
-            decl->is_const = 0;
-            decl->is_static = 0;
+    node *p = params;
+    while (p != NULL) {
+        if (p->type == DT_STRING) {
+            show_error_message(ERR_FUNCTION_STRING, "Erro ao declarar \"%s\" - String não pode ser um parâmetro de função", ident);
+        }
+        declaration_type_t *decl = (declaration_type_t*) malloc(sizeof(declaration_type_t));
+        decl->decl_type = p->type;
+        decl->ident = p->label;
+        decl->is_const = 0;
+        decl->is_static = 0;
 
-            list_add(args, decl);
-            ident_var_declaration(decl->ident, decl->decl_type, decl->is_static);
+        list_add(args, decl);
+        ident_var_declaration(decl->ident, decl->decl_type, decl->is_static);
 
-            p = next_node(p);
-        }       
-    }
+        p = next_statement(p);
+    }       
 
     hashmap_value_t *value = create_hashmap_value(return_type, NT_FUNCTION, 0, args);
+    value->fun_label = label;
     hashmap_put(current_scope, ident, value);
 }
 
@@ -320,7 +332,7 @@ void ident_fun_use(char *ident, node *params) {
             show_error_message(ERR_WRONG_TYPE_ARGS, "Tipo errado para a função \"%s\"", ident);
         }
         p_index++;
-        p = next_node(p);
+        p = next_statement(p);
     }
     if (value->args->size > p_index) {
         show_error_message(ERR_MISSING_ARGS, "Argumentos faltantes na chamada da função \"%s\"", ident);
@@ -464,6 +476,8 @@ void hashmap_print(hashmap_t *map) {
                     list_print(value->args);
                     printf(" -> ");
                     print_data_type(value->type);
+                    printf("\tMEN_SIZE %d", value->men_size);
+                    printf("\tLABEL: %d", value->fun_label);
                 } else if (value->nature == NT_VARIABLE) {
                     printf("VAR\t");
                     print_data_type(value->type);

@@ -1,14 +1,23 @@
 
-int aaaaa;
 
-int main() {
-    int i <= 0;
-    int b <= 0;
-    for (i = 0 : i < 5 : i = i + 1) {
-        b = b + 1;
-    };
+// int foo(int y) { 
+//     if (y == 5) {
+//         return 5;
+//     } else {
+//         return foo(y + 1); 
+//     };
+// } 
 
-    while (true) do {
-        b = 33;
-    };
+// int main() { 
+//     int x; 
+//     x = foo(x); 
+// }
+
+int foo(int y, int x) { 
+    return y + x; 
+}
+
+int main() { 
+    int x;
+    x = foo(5, 10); 
 }

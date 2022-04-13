@@ -5,14 +5,14 @@
 #include "types.h"
 #include "errors.h"
 
-stack_t* scope_stack;
-
 /**
  * Inicializa a pilha de escopos e cria o 
  * escopo global
  * 
  */
 void semantic_init();
+
+stack_entry_t *current_scope();
 
 /**
  * Cria um novo escopo com o label informado.
@@ -114,7 +114,8 @@ void ident_vector_declaration(
 void ident_fun_declaration(
     char *ident,
     enum data_type return_type,
-    node *params
+    node *params,
+    int label
 );
 
 /**

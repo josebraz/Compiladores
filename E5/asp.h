@@ -7,7 +7,7 @@
 
 node *asp_stmt_list(node *head, node *tail);
 
-node *next_node(node *parent);
+node *next_statement(node *parent);
 
 /**
  * adiciona um filho ao pai

@@ -17,6 +17,7 @@ enum op_type {
 
 typedef struct __instruction {
     char code[10];
+    char comment[100];
     enum op_type op1_type;
     int op1;
     enum op_type op2_type;
@@ -130,7 +131,7 @@ typedef struct __hashmap_value {
     int line;
     enum data_type type;
     enum nature_type nature;
-    int men_size;
+    int men_size;            // quanto a variável ocupa, para funções é a memória de todas as variáveis
     int men_offset;
     list_t *args;
     int fun_label;

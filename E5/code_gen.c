@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <stdarg.h>
 
@@ -9,12 +10,14 @@
 #include "bool_lst.h"
 #include "instr_lst.h"
 #include "semantic.h"
+#include "asp.h"
 #include "types.h"
 
 #define EMPTY -1
 #define RBSS  -3
 #define RFP   -4
 #define RSP   -5
+#define RPC   -6
 
 int instr_counter = 0;
 
@@ -36,7 +39,7 @@ instruction_entry_t *generate_init_code() {
 
     instruction_entry_t *rfp_load = generate_instructionI("loadI", EMPTY, 1024, RFP);
     instruction_entry_t *rsp_load = generate_instructionI("loadI", EMPTY, 1024, RSP);
-    instruction_entry_t *rbss_load = generate_instructionI("loadI", EMPTY, counter + 5, RBSS);
+    instruction_entry_t *rbss_load = generate_instructionI("loadI", EMPTY, counter + 6, RBSS);
     instruction_entry_t *jump_main = generate_jumpI(main_decl->fun_label);
     return instr_lst_join(4, rfp_load, rsp_load, rbss_load, jump_main);
 }
@@ -71,6 +74,94 @@ void generate_var_assignment(char *ident, node *b, node *init) {
     b->code = instr_lst_join(2, init->code, store_instr);
 }
 
+void generate_fun_return(node *s, node *e) {
+    hashmap_t *global_scope;
+    hashmap_t *function_scope = current_scope();
+    char *fun_name = function_scope->label;
+    hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
+
+    // Escreve o retorno
+    int return_end = function_scope->offset + 3 * 4;
+    instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, return_end);
+
+    int end_retorn_reg = next_reg();
+    int last_rsp_reg = next_reg();
+    int last_rfp_reg = next_reg();
+    
+    instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, end_retorn_reg);
+    instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, last_rsp_reg);
+    instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, last_rfp_reg);
+    instruction_entry_t *copy_rsp = generate_instructionI("i2i", last_rsp_reg, EMPTY, RSP);
+    instruction_entry_t *copy_rfp = generate_instructionI("i2i", last_rfp_reg, EMPTY, RFP);
+    instruction_entry_t *jump_ret = generate_jump(end_retorn_reg);
+
+    comment_instruction(load_ret_end, "Carrega end de retorno");
+    comment_instruction(load_last_rsp, "Carrega ultimo RSP");
+    comment_instruction(load_last_rfp, "Carrega ultimo RFP");
+    comment_instruction(e->code, "Início do retorno de %s", fun_name);
+    comment_instruction(store_result, "Escreve o valor de retorno na pilha");
+
+    s->code = instr_lst_join(8, e->code, store_result, load_ret_end,
+                                load_last_rsp, load_last_rfp,
+                                copy_rsp, copy_rfp, jump_ret);
+}
+
+void generate_fun_decl(node *fun) {
+    char *fun_name = (char*) fun->label;
+
+    hashmap_t *global_scope;
+    hashmap_t *function_scope = current_scope();
+    hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
+
+    instruction_entry_t *instr_fun_label = generate_label_instruction(fun_decl->fun_label);
+    instruction_entry_t *update_rfp = generate_instructionI("i2i", RSP, EMPTY, RFP);
+    int rsp_gap = function_scope->offset + 4 * 4; // offset de variáveis + end retorno, rsp salvo, rfp salvo, valor de retorno
+    instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
+
+    comment_instruction(instr_fun_label, "Declaração da função %s", fun_name);
+    
+    fun->code = instr_lst_join(4, instr_fun_label, update_rfp, update_rsp, fun->nodes[0]->code);
+}
+
+void generate_fun_call(node *s, node *params) {
+    char *fun_name = (char *) s->value;
+    hashmap_t *global_scope;
+    hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
+
+    instruction_entry_t *store_rsp = generate_instructionS("storeAI", RSP, RSP, 4);
+    instruction_entry_t *store_rfp = generate_instructionS("storeAI", RFP, RSP, 8);
+
+    // para cada parametro da função cria um store
+    int param_offset = 12;
+    instruction_entry_t *param_lst = NULL;
+    node *p = params;
+    while (p != NULL) {
+        instruction_entry_t *p_store = generate_instructionS("storeAI", p->reg_result, RSP, param_offset);
+        comment_instruction(p_store, "grava o parametro %d da função", (param_offset - 12) / 4 + 1);
+        param_lst = instr_lst_join(3, param_lst, p->code, p_store);
+        param_offset += 4;
+        p = next_statement(p);
+    }
+
+    // prepara o endereço de retorno que é após essas 2 instr e do jump
+    int ret_end_reg = next_reg();
+    instruction_entry_t *cal_ret_end = generate_instructionI("addI", RPC, 3, ret_end_reg);
+    instruction_entry_t *store_ret_end = generate_instructionS("storeAI", ret_end_reg, RSP, 0);
+    instruction_entry_t *jump_start = generate_jumpI(fun_decl->fun_label);
+
+    int ret_value_reg = next_reg();
+    int return_value_end = fun_decl->men_size + 3 * 4;
+    instruction_entry_t *load_return_value = generate_instructionI("loadAI", RSP, return_value_end, ret_value_reg);
+
+    comment_instruction(store_rsp, "Inicio da chamada de %s()", fun_name);
+    comment_instruction(load_return_value, "Carrega o valor de retorno de %s()", fun_name);
+
+    s->reg_result = ret_value_reg;
+    s->code = instr_lst_join(7, store_rsp, store_rfp, 
+                                param_lst, cal_ret_end,
+                                store_ret_end, jump_start, load_return_value);
+}
+
 void generate_for(node *s, node *s1, node *b, node *s2, node *s3) {
     int label_start = next_label();
     int label_true = next_label();
@@ -80,6 +171,10 @@ void generate_for(node *s, node *s1, node *b, node *s2, node *s3) {
     instruction_entry_t *instr_true_label = generate_label_instruction(label_true);
     instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
     instruction_entry_t *jump_start = generate_jumpI(label_start);
+
+    comment_instruction(instr_start_label, "Label do teste do for");
+    comment_instruction(instr_true_label, "Label de dentro do for");
+    comment_instruction(instr_end_label, "Label do final do for");
 
     bool_lst_remenda(b->true_list, label_true);
     bool_lst_remenda(b->false_list, label_end);
@@ -100,6 +195,10 @@ void generate_while(node *s, node *b, node *s1) {
     instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
     instruction_entry_t *jump_start = generate_jumpI(label_start);
 
+    comment_instruction(instr_true_label, "Label de dentro do while");
+    comment_instruction(instr_start_label, "Label do teste do while");
+    comment_instruction(instr_end_label, "Label do final do while");
+
     bool_lst_remenda(b->true_list, label_true);
     bool_lst_remenda(b->false_list, label_end);
 
@@ -116,9 +215,14 @@ void generate_if(node *b, node *e, node *b_true, node *b_false) {
     instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
     instruction_entry_t *jump_end = generate_jumpI(label_end);
 
+    comment_instruction(instr_true_label, "Label true do if");
+    comment_instruction(instr_true_label, "Label de final do if");
+
     if (b_false != NULL) {
         int label_false = next_label();
         instruction_entry_t *instr_false_label = generate_label_instruction(label_false);
+
+        comment_instruction(instr_false_label, "Label false do if");
 
         bool_lst_remenda(e->true_list, label_true);
         bool_lst_remenda(e->false_list, label_false);
@@ -207,47 +311,58 @@ void print_instr_lst(instruction_entry_t *entry) {
     }
 }
 
-void print_instr_param(int op, int op_type) {
+int print_instr_param(int op, int op_type) {
     if (op_type == OT_IMED) {
-        printf("%d", op);
+        return printf("%d", op);
     } else if (op_type == OT_LABEL) {
-        printf("L%d", op);
+        return printf("L%d", op);
     } else {
         if (op == RBSS) {
-            printf("rbss");
+            return printf("rbss");
         } else if (op == RFP) {
-            printf("rfp");
+            return printf("rfp");
         } else if (op == RSP) {
-            printf("rsp");
+            return printf("rsp");
+        } else if (op == RPC) {
+            return printf("rpc");
         } else {
-            printf("r%d", op);
+            return printf("r%d", op);
         }
     }
 }
 
 void print_instruction(instruction_t *inst) {
+    int char_counter = 0;
     if (inst->op1_type == OT_LABEL) {
-        printf("L%d:", inst->op1);
+        char_counter += printf("L%d:", inst->op1);
     } else if (strncmp(inst->code, "store", 5) == 0 || strcmp(inst->code, "cbr") == 0) {
-        printf("%s ", inst->code);
-        print_instr_param(inst->op1, inst->op1_type);
-        printf(" => ");
-        print_instr_param(inst->op2, inst->op2_type);
-        printf(", ");
-        print_instr_param(inst->op3, inst->op3_type);
+        char_counter += printf("%s ", inst->code);
+        char_counter += print_instr_param(inst->op1, inst->op1_type);
+        char_counter += printf(" => ");
+        char_counter += print_instr_param(inst->op2, inst->op2_type);
+        char_counter += printf(", ");
+        char_counter += print_instr_param(inst->op3, inst->op3_type);
     } else {
-        printf("%s ", inst->code);
+        char_counter += printf("%s ", inst->code);
         if (inst->op1_type != OT_DISABLED && inst->op1 != EMPTY) {
-            print_instr_param(inst->op1, inst->op1_type);
-            printf(", ");
+            char_counter += print_instr_param(inst->op1, inst->op1_type);
         }
         if (inst->op2_type != OT_DISABLED && inst->op2 != EMPTY) {
-            print_instr_param(inst->op2, inst->op2_type);
+            if (inst->op1_type != OT_DISABLED && inst->op1 != EMPTY) {
+                char_counter += printf(", ");
+            }
+            char_counter += print_instr_param(inst->op2, inst->op2_type);
         }
-        printf(" => ");
+        char_counter += printf(" => ");
         if (inst->op3_type != OT_DISABLED && inst->op3 != EMPTY) {
-            print_instr_param(inst->op3, inst->op3_type);
+            char_counter += print_instr_param(inst->op3, inst->op3_type);
         }
+    }
+    if (strlen(inst->comment) > 0) {
+        for (int i = 0; i < 30 - char_counter; i++) {
+            printf(" ");
+        }
+        printf("// %s", inst->comment);
     }
     printf("\n");
 }
@@ -263,7 +378,14 @@ void get_var_mem_loc(char *ident, int *reg, int *offset) {
     } else {
         *reg = RFP;
     }
-    *offset = decl->men_offset;
+    *offset = decl->men_offset + 12;
+}
+
+void comment_instruction(instruction_entry_t *entry, char *message, ...) {
+    va_list argptr;
+    va_start(argptr, message);
+    vsprintf(entry->entry->comment, message, argptr);
+    va_end(argptr);
 }
 
 instruction_entry_t *generate_label_instruction(int label) {
@@ -274,7 +396,7 @@ instruction_entry_t *generate_label_instruction(int label) {
     instr->op2 = EMPTY;
     instr->op3_type = OT_DISABLED;
     instr->op3 = EMPTY;
-
+    strcpy(instr->comment, "\0");
     return instr_lst_create_new(instr);
 }
 
@@ -287,7 +409,7 @@ instruction_entry_t *generate_instructionB(int reg, int label1, int label2) {
     instr->op2 = label1;
     instr->op3_type = OT_LABEL;
     instr->op3 = label2;
-
+    strcpy(instr->comment, "\0");
     instr_counter++;
     return instr_lst_create_new(instr);
 }
@@ -301,7 +423,7 @@ instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int re
     instr->op2 = reg2;
     instr->op3_type = OT_REG;
     instr->op3 = reg3;
-
+    strcpy(instr->comment, "\0");
     instr_counter++;
     return instr_lst_create_new(instr);
 }
@@ -315,7 +437,7 @@ instruction_entry_t *generate_instructionI(char *code, int reg1, int value, int 
     instr->op2 = value;
     instr->op3_type = OT_REG;
     instr->op3 = reg3;
-
+    strcpy(instr->comment, "\0");
     instr_counter++;
     return instr_lst_create_new(instr);
 }
@@ -329,6 +451,21 @@ instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int 
     instr->op2 = value;
     instr->op3_type = OT_IMED;
     instr->op3 = reg3;
+    strcpy(instr->comment, "\0");
+    instr_counter++;
+    return instr_lst_create_new(instr);
+}
+
+instruction_entry_t *generate_jump(int reg) {
+    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    strcpy(instr->code, "jump");
+    instr->op1_type = OT_DISABLED;
+    instr->op1 = EMPTY;
+    instr->op2_type = OT_DISABLED;
+    instr->op2 = EMPTY;
+    instr->op3_type = OT_REG;
+    instr->op3 = reg;
+    strcpy(instr->comment, "\0");
     instr_counter++;
     return instr_lst_create_new(instr);
 }
@@ -342,6 +479,8 @@ instruction_entry_t *generate_jumpI(int label) {
     instr->op2 = EMPTY;
     instr->op3_type = OT_LABEL;
     instr->op3 = label;
+    strcpy(instr->comment, "\0");
+    instr_counter++;
     return instr_lst_create_new(instr);
 }
 

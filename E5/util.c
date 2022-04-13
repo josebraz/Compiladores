@@ -65,8 +65,8 @@ void generate_dot(void *arvore) {
 void exporta(void *arvore) {
     // print_tree_children(arvore);
     // print_tree_labels(arvore);
-    generate_dot(arvore);
-    print_stack();
+    // generate_dot(arvore);
+    // print_stack();
     print_instr_lst(((node*) arvore)->code);
 }
 

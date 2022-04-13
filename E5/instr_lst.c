@@ -16,9 +16,8 @@ instruction_entry_t *instr_lst_create_new(instruction_t *new_inst) {
 }
 
 instruction_entry_t *instr_lst_join_internal(instruction_entry_t *entry1, instruction_entry_t *entry2) {
-    if (entry1 == NULL) {
-        return entry2;
-    }
+    if (entry1 == NULL) return entry2;
+    if (entry2 == NULL) return entry1;
     instruction_entry_t *last = entry1;
     while (last->next != NULL) {
         last = last->next;

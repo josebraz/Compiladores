@@ -23,9 +23,14 @@ node *asp_stmt_list(node *head, node *tail) {
     return head;
 }
 
-node *next_node(node *parent) {
-    if (parent->nodes != NULL) {
-        return parent->nodes[parent->size-1];
+node *next_statement(node *parent) {
+    if (parent->size > 0 && parent->nodes != NULL) {
+        node *next = parent->nodes[parent->size-1];
+        if (next->mark == STMT_T) {
+            return next;
+        } else {
+            return NULL;
+        }
     } else {
         return NULL;
     }
@@ -264,7 +269,9 @@ node* create_leaf_fun_call(char *value, node* params) {
     strcpy(label, "call ");
     strcat(label, value);
     node *leaf = create_leaf((void *) value, label);
-    add_child(leaf, params);
+    if (params != NULL) {
+        add_child(leaf, params);
+    }
     leaf->mark = FUN_CALL_T;
     return leaf;
 }

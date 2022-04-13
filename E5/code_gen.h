@@ -9,6 +9,12 @@ int next_reg();
 
 int next_label();
 
+void generate_fun_return(node *s, node *e);
+
+void generate_fun_decl(node *fun);
+
+void generate_fun_call(node *s, node *params);
+
 void generate_for(node *s, node *s1, node *b, node *s2, node *s3);
 
 void generate_while(node *s, node *b, node *s1);
@@ -47,7 +53,11 @@ instruction_entry_t *generate_instructionB(int reg, int label1, int label2);
 
 instruction_entry_t *generate_jumpI(int label);
 
+instruction_entry_t *generate_jump(int reg);
+
 instruction_entry_t *generate_label_instruction(int label);
+
+void comment_instruction(instruction_entry_t *entry, char *message, ...);
 
 void get_var_mem_loc(char *ident, int *reg, int *offset);
 

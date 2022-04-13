@@ -19,6 +19,7 @@ hashmap_t* hashmap_init(char *label) {
     hashmap->actual_capacity = HASHMAP_INITIAL_CAPACITY;
     hashmap->values = (hashmap_entry_t **) calloc(HASHMAP_INITIAL_CAPACITY, sizeof(hashmap_entry_t*));
     hashmap->label = strdup(label);
+    hashmap->offset = 0;
 
     if (hashmap->values == NULL) {
         perror("Não foi possivel alocar memória inicial para as entradas da tabela!");
@@ -92,7 +93,7 @@ int hashmap_index(const hashmap_t *map, const char *key) {
 void hashmap_put(hashmap_t *map, const char *key, hashmap_value_t *value) {
     static int all_conflits = 0;
     int index, conflits = 0;
-    hashmap_entry_t *entry;
+    hashmap_entry_t *entry = NULL;
 
     if (map->size >= (map->actual_capacity / 2)) {
         // não deixa enxer muito a tabela para evitar muitos conflitos
@@ -124,7 +125,7 @@ hashmap_entry_t *hashmap_entry(const hashmap_t *map, const char *key, int *out_i
     int conflits = 0;
     int index = hashmap_index(map, key);
     hashmap_entry_t *entry = map->values[index];
-    while ((entry == NULL || hashmap_compare_key(entry->key, key) != 0) && 
+    while ((entry == NULL || entry->key == NULL || hashmap_compare_key(entry->key, key) != 0) && 
             conflits < map->actual_capacity) {
         conflits++;
         index = (index + 3) % map->actual_capacity;
