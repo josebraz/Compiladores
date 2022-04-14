@@ -5,6 +5,8 @@
 
 #include "types.h"
 
+instruction_entry_t *instr_lst_copy(instruction_entry_t *source);
+
 instruction_entry_t *instr_lst_create(int size, ...);
 
 instruction_entry_t *instr_lst_create_new(instruction_t *new_inst);

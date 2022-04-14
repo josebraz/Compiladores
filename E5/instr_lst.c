@@ -7,6 +7,27 @@
 
 #include "instr_lst.h"
 
+instruction_entry_t *instr_lst_copy(instruction_entry_t *source) {
+    instruction_entry_t *temp = NULL;
+    instruction_entry_t *current = source, *first = NULL, *last = NULL;
+    while (current != NULL) {
+        temp = (instruction_entry_t*) malloc(sizeof(instruction_entry_t));
+        temp->entry = current->entry;
+        temp->next = NULL;
+        temp->previous = NULL;
+
+        if (first == NULL) {
+            first = temp;
+        } else {
+            temp->previous = last;
+            last->next = temp;
+        }
+        last = temp;
+        current = current->next;
+    }
+    return first;
+}
+
 instruction_entry_t *instr_lst_create_new(instruction_t *new_inst) {
     instruction_entry_t *new_entry = (instruction_entry_t*) malloc(sizeof(instruction_entry_t));
     new_entry->next = NULL;

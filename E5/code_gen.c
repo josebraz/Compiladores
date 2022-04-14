@@ -13,6 +13,8 @@
 #include "asp.h"
 #include "types.h"
 
+#define RET    1 // registrador para os end de retorno
+#define EFEM   0 // registrador efemero que pode mudar a qualquer momento
 #define EMPTY -1
 #define RBSS  -3
 #define RFP   -4
@@ -22,7 +24,7 @@
 int instr_counter = 0;
 
 int next_reg() {
-    static int last_reg = 0;
+    static int last_reg = 2;
     return last_reg++;
 }
 
@@ -88,19 +90,13 @@ void generate_fun_return(node *s, node *e) {
     hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
 
     // Escreve o retorno
-    int return_end = function_scope->offset + 3 * 4;
-    instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, return_end);
-
-    int end_retorn_reg = next_reg();
-    int last_rsp_reg = next_reg();
-    int last_rfp_reg = next_reg();
-    
-    instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, end_retorn_reg);
-    instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, last_rsp_reg);
-    instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, last_rfp_reg);
-    instruction_entry_t *copy_rsp = generate_instructionI("i2i", last_rsp_reg, EMPTY, RSP);
-    instruction_entry_t *copy_rfp = generate_instructionI("i2i", last_rfp_reg, EMPTY, RFP);
-    instruction_entry_t *jump_ret = generate_jump(end_retorn_reg);
+    instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, 12);
+    instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, EFEM);
+    instruction_entry_t *copy_rsp = generate_instructionI("i2i", EFEM, EMPTY, RSP);
+    instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, EFEM);
+    instruction_entry_t *copy_rfp = generate_instructionI("i2i", EFEM, EMPTY, RFP);
+    instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, RET);
+    instruction_entry_t *jump_ret = generate_jump(RET);
 
     comment_instruction(load_ret_end, "Carrega end de retorno");
     comment_instruction(load_last_rsp, "Carrega ultimo RSP");
@@ -108,9 +104,46 @@ void generate_fun_return(node *s, node *e) {
     comment_instruction(e->code, "Início do retorno de %s", fun_name);
     comment_instruction(store_result, "Escreve o valor de retorno na pilha");
 
-    s->code = instr_lst_join(8, e->code, store_result, load_ret_end,
-                                load_last_rsp, load_last_rfp,
-                                copy_rsp, copy_rfp, jump_ret);
+    s->code = instr_lst_join(8, e->code, store_result,
+                                load_ret_end, load_last_rsp, copy_rsp, 
+                                load_last_rfp, copy_rfp, jump_ret);
+}
+
+void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
+    if (strcmp(n->label, "return") == 0) {
+        instruction_entry_t *copy = instr_lst_copy(restore_code);
+        printf("insert_restore_reg_code\n");
+        print_instr_lst(n->code);
+
+        instruction_entry_t *current = n->code;
+        while (current != NULL && (strcmp(current->entry->code, "loadAI") != 0 || current->entry->op3 != RET)) {
+            current = current->next;
+        }
+        if (current != NULL) {
+            instruction_entry_t *previous = current->previous;
+            if (previous != NULL) {
+                previous->next = copy;
+                copy->previous = previous;
+            }
+            instr_lst_join(2, copy, current);
+        }
+    } else {
+        for (int i = 0; i < n->size; i++) {
+            insert_restore_reg_code(n->nodes[i], restore_code);
+        }
+        if (n->next != NULL) {
+            insert_restore_reg_code(n->next, restore_code);
+        }
+    }
+}
+
+int is_destrutive_op(instruction_t *inst) {
+    if (inst->op3_type == OT_REG && inst->op3 >= 2 && 
+        (inst->op1 != EMPTY || inst->op2 != EMPTY)) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 void generate_fun_decl(node *fun) {
@@ -123,11 +156,33 @@ void generate_fun_decl(node *fun) {
     instruction_entry_t *instr_fun_label = generate_label_instruction(fun_decl->fun_label);
     instruction_entry_t *update_rfp = generate_instructionI("i2i", RSP, EMPTY, RFP);
     int rsp_gap = function_scope->offset + 4 * 4; // offset de variáveis + end retorno, rsp salvo, rfp salvo, valor de retorno
-    instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
 
     comment_instruction(instr_fun_label, "Declaração da função %s", fun_name);
-    
-    fun->code = instr_lst_join(4, instr_fun_label, update_rfp, update_rsp, fun->nodes[0]->code);
+
+    instruction_entry_t *store_used_reg = NULL;
+    instruction_entry_t *load_used_reg = NULL;
+    instruction_entry_t *fun_body_code = fun->nodes[0]->code;
+    while (fun_body_code != NULL) {
+        if (is_destrutive_op(fun_body_code->entry) == 1) {
+            store_used_reg = instr_lst_join(2, store_used_reg, 
+                            generate_instructionS("storeAI", fun_body_code->entry->op3, RFP, rsp_gap));
+            load_used_reg = instr_lst_join(2, load_used_reg, 
+                            generate_instructionI("loadAI", RFP, rsp_gap, fun_body_code->entry->op3));
+            rsp_gap += 4;
+        }
+        fun_body_code = fun_body_code->next;
+    }
+    comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
+    comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
+
+    instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
+
+    fun->code = instr_lst_join(5, instr_fun_label, update_rfp, 
+                                  update_rsp, store_used_reg, 
+                                  fun->nodes[0]->code);
+
+    insert_restore_reg_code(fun->nodes[0], load_used_reg);
+
     if (strcmp(fun_name, "main") == 0) {
         // quando acabar a main a gente acaba a máquina com um halt
         instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
@@ -144,26 +199,24 @@ void generate_fun_call(node *s, node *params) {
     instruction_entry_t *store_rfp = generate_instructionS("storeAI", RFP, RSP, 8);
 
     // para cada parametro da função cria um store
-    int param_offset = 12;
+    int param_offset = 16;
     instruction_entry_t *param_lst = params->code;
     node *p = params;
     while (p != NULL) {
         instruction_entry_t *p_store = generate_instructionS("storeAI", p->reg_result, RSP, param_offset);
-        comment_instruction(p_store, "grava o parametro %d da função", (param_offset - 12) / 4 + 1);
+        comment_instruction(p_store, "grava o parametro %d da função", (param_offset - 16) / 4 + 1);
         param_lst = instr_lst_join(2, param_lst, p_store);
         param_offset += 4;
         p = p->next;
     }
 
     // prepara o endereço de retorno que é após essas 2 instr e do jump
-    int ret_end_reg = next_reg();
-    instruction_entry_t *cal_ret_end = generate_instructionI("addI", RPC, 3, ret_end_reg);
-    instruction_entry_t *store_ret_end = generate_instructionS("storeAI", ret_end_reg, RSP, 0);
+    instruction_entry_t *cal_ret_end = generate_instructionI("addI", RPC, 3, EFEM);
+    instruction_entry_t *store_ret_end = generate_instructionS("storeAI", EFEM, RSP, 0);
     instruction_entry_t *jump_fun = generate_jumpI(fun_decl->fun_label);
 
     int ret_value_reg = next_reg();
-    int return_value_end = fun_decl->men_size + 3 * 4;
-    instruction_entry_t *load_return_value = generate_instructionI("loadAI", RSP, return_value_end, ret_value_reg);
+    instruction_entry_t *load_return_value = generate_instructionI("loadAI", RSP, 12, ret_value_reg);
 
     comment_instruction(store_rsp, "Inicio da chamada de %s()", fun_name);
     comment_instruction(load_return_value, "Carrega o valor de retorno de %s()", fun_name);
@@ -393,7 +446,7 @@ void get_var_mem_loc(char *ident, int *reg, int *offset) {
     } else {
         *reg = RFP;
     }
-    *offset = decl->men_offset + 12;
+    *offset = decl->men_offset + 16;
 }
 
 void comment_instruction(instruction_entry_t *entry, char *message, ...) {

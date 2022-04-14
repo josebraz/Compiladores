@@ -13,15 +13,27 @@
 //     x = foo(x); 
 // }
 
+// int factorial(int n) {
+//    if(n == 0) {
+//       return 1;
+//    } else {
+//       return n * factorial(n-1);
+//    };
+// }
+
 int fibonacci(int n) {
     if (n == 1) {
-        return 1;
+        return 0;
     } else {
-        return n + fibonacci(n-1);
+        if (n == 2) {
+            return 1;
+        } else {
+            return fibonacci(n-1) + fibonacci(n-2);
+        };
     };
 }
 
 int main() { 
     int x;
-    x = fibonacci(2); 
+    x = fibonacci(6); 
 }
