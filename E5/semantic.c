@@ -97,6 +97,14 @@ stack_entry_t *current_scope() {
     return stack_peek(scope_stack);
 }
 
+void free_scopes() {
+    for (int i = 0; i < scope_stack->actual_capacity; i++) {
+        hashmap_destroy(scope_stack->entries[i]);
+        scope_stack->entries[i] = NULL;
+    }
+    stack_destroy(scope_stack);
+}
+
 void enter_scope(char *label) {
     hashmap_t *current_scope = stack_peek(scope_stack);
     hashmap_t* new_table = hashmap_init(label);
@@ -117,7 +125,7 @@ void exit_scope() {
         hashmap_value_t *value = hashmap_get(out_scope, current_scope->label);
         value->men_size = current_scope->offset;
     }
-    hashmap_print(current_scope);
+    // hashmap_print(current_scope);
     hashmap_destroy(current_scope);
 }
 
@@ -332,7 +340,7 @@ void ident_fun_use(char *ident, node *params) {
         if (p_data_type == DT_STRING) {
             show_error_message(ERR_FUNCTION_STRING, "Erro ao usar \"%s\" - String não pode ser um parâmetro de função", ident);
         }
-        if (p_data_type != item->decl_type) {
+        if (can_implicit_conversion(p_data_type, item->decl_type) == 0) {
             show_error_message(ERR_WRONG_TYPE_ARGS, "Tipo errado para a função \"%s\"", ident);
         }
         p_index++;

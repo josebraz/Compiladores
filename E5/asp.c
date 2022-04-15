@@ -7,6 +7,7 @@
 
 #include "asp.h"
 #include "instr_lst.h"
+#include "bool_lst.h"
 #include "types.h"
 
 node *asp_stmt_list(node *head, node *tail) {
@@ -265,6 +266,14 @@ void free_node(node *n) {
         if (n->nodes != NULL) {
             free(n->nodes);
             n->nodes = NULL;
+        }
+        if (n->false_list != NULL) {
+            bool_list_free(n->false_list);
+            n->false_list = NULL;
+        }
+        if (n->true_list != NULL) {
+            bool_list_free(n->true_list);
+            n->true_list = NULL;
         }
         free(n);
     }

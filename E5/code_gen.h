@@ -41,7 +41,7 @@ void generate_literal_load(node *n);
 
 void generate_var_assignment(char *ident, node *b, node *init);
 
-instruction_entry_t *generate_init_code();
+instruction_entry_t *generate_init_code(int counter);
 
 instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int reg3);
 

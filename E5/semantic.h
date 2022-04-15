@@ -14,6 +14,8 @@ void semantic_init();
 
 stack_entry_t *current_scope();
 
+void free_scopes();
+
 /**
  * Cria um novo escopo com o label informado.
  * No caso de um escopo de função, o label

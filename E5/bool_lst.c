@@ -13,6 +13,16 @@ int bool_lst_next_remendo() {
     return last_remendo--;
 }
 
+void bool_list_free(bool_list *head) {
+    bool_list *temp;
+    bool_list *list = head;
+    while (list != NULL) {
+        temp = list->next;
+        free(list);
+        list = temp;
+    }
+}
+
 bool_list *bool_lst_create(int size, ...) {
     va_list arguments;
     bool_list *entry, *last_entry = NULL, *first_entry = NULL;

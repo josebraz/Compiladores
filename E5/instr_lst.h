@@ -5,6 +5,10 @@
 
 #include "types.h"
 
+int instr_lst_count(instruction_entry_t *list);
+
+void instr_lst_free(instruction_entry_t *list);
+
 instruction_entry_t *instr_lst_copy(instruction_entry_t *source);
 
 instruction_entry_t *instr_lst_create(int size, ...);

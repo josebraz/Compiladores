@@ -1,6 +1,6 @@
 loadI 1024 => rfp
 loadI 1024 => rsp
-loadI 112 => rbss
+loadI 144 => rbss
 jumpI  => L7
 L0:                           // Declaração da função fibonacci
 i2i rsp => rfp
@@ -27,7 +27,7 @@ loadI 1 => r3
 cmp_EQ r2, r3 => r4
 cbr r4 => L4, L6
 L4:                           // Label true do if
-loadI 0 => r5                 // Início do retorno de local
+loadI 0 => r5                 // Início do retorno
 storeAI r5 => rfp, 12         // Escreve o valor de retorno na pilha
 loadAI rfp, 20 => r2          // Restaura o estado dos registradores usados
 loadAI rfp, 24 => r3
@@ -59,7 +59,7 @@ loadI 2 => r7
 cmp_EQ r6, r7 => r8
 cbr r8 => L1, L3
 L1:                           // Label true do if
-loadI 1 => r9                 // Início do retorno de local
+loadI 1 => r9                 // Início do retorno
 storeAI r9 => rfp, 12         // Escreve o valor de retorno na pilha
 loadAI rfp, 20 => r2          // Restaura o estado dos registradores usados
 loadAI rfp, 24 => r3
@@ -86,7 +86,7 @@ i2i r0 => rfp
 jump  => r1
 jumpI  => L2
 L3:                           // Label false do if
-storeAI rsp => rsp, 4         // Início do retorno de local
+storeAI rsp => rsp, 4         // Início do retorno
 storeAI rfp => rsp, 8
 loadAI rfp, 16 => r10         // Carrega variável n
 loadI 1 => r11
@@ -146,5 +146,5 @@ addI rpc, 3 => r0
 storeAI r0 => rsp, 0
 jumpI  => L0                  // Salta para a função fibonacci()
 loadAI rsp, 12 => r20         // Carrega o valor de retorno de fibonacci()
-storeAI r20 => rfp, 16        // Grava variável x
+storeAI r20 => rfp, 16        // Grava variável i
 halt

@@ -6,6 +6,7 @@
 #include "types.h"
 #include "util.h"
 #include "asp.h"
+#include "instr_lst.h"
 #include "semantic.h"
 #include "hashmap.h"
 #include "code_gen.h"
@@ -55,7 +56,7 @@ void generate_dot_rec(void *arvore) {
     
     if (n == NULL) return;
     
-    printf("\t%ld [label=\"%s\" mark=%d]\n", n, n->label, n->mark);
+    printf("\t%ld [label=\"%s\" type=%d mark=%d]\n", n, n->label, n->type, n->mark);
     
     for (i = 0; i < n->size; i++) {
         if (n->nodes[i] != NULL) {
@@ -88,21 +89,8 @@ void exporta(void *arvore) {
     print_instr_lst(((node*) arvore)->code);
 }
 
-void free_list(instruction_entry_t *head) {
-    if (head != NULL) {
-        free(head->entry);
-        head->entry = NULL;
-
-        if (head->next != NULL) {
-            free_list(head->next);
-            free(head);
-        }
-    }
-}
-
-void free_tree(void *arvore) {
+void free_tree(node *n) {
     int i;
-    node *n = (node *) arvore;
 
     if (n == NULL) return;
     for (i = 0; i < n->size; i++) {
@@ -113,15 +101,13 @@ void free_tree(void *arvore) {
     }
     
     free_node(n);
-    free_list(n->code);
 }
 
 void libera(void *arvore) {
-    // free_tree(arvore);
-    // for (int i = 0; i < scope_stack->actual_capacity; i++) {
-    //     hashmap_destroy(scope_stack->entries[i]);
-    //     scope_stack->entries[i] = NULL;
-    // }
-    // stack_destroy(scope_stack);
+    node *n = (node *) arvore;
+    instr_lst_free(n->code);
+    n->code = NULL;
+    free_tree(arvore);
+    free_scopes();
 }
 

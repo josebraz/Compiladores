@@ -21,8 +21,6 @@
 #define RSP   -5
 #define RPC   -6
 
-int instr_counter = 0;
-
 int next_reg() {
     static int last_reg = 2;
     return last_reg++;
@@ -33,9 +31,7 @@ int next_label() {
     return last_label++;
 }
 
-instruction_entry_t *generate_init_code() {
-    int counter = instr_counter;
-
+instruction_entry_t *generate_init_code(int counter) {
     hashmap_value_t *main_decl = find_declaration("main", NULL);
     if (main_decl == NULL) exit(1);
 
@@ -84,12 +80,6 @@ void generate_var_assignment(char *ident, node *b, node *init) {
 }
 
 void generate_fun_return(node *s, node *e) {
-    hashmap_t *global_scope;
-    hashmap_t *function_scope = current_scope();
-    char *fun_name = function_scope->label;
-    hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
-
-    // Escreve o retorno
     instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, 12);
     instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, EFEM);
     instruction_entry_t *copy_rsp = generate_instructionI("i2i", EFEM, EMPTY, RSP);
@@ -101,7 +91,7 @@ void generate_fun_return(node *s, node *e) {
     comment_instruction(load_ret_end, "Carrega end de retorno");
     comment_instruction(load_last_rsp, "Carrega ultimo RSP");
     comment_instruction(load_last_rfp, "Carrega ultimo RFP");
-    comment_instruction(e->code, "Início do retorno de %s", fun_name);
+    comment_instruction(e->code, "Início do retorno");
     comment_instruction(store_result, "Escreve o valor de retorno na pilha");
 
     s->code = instr_lst_join(8, e->code, store_result,
@@ -112,9 +102,6 @@ void generate_fun_return(node *s, node *e) {
 void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
     if (strcmp(n->label, "return") == 0) {
         instruction_entry_t *copy = instr_lst_copy(restore_code);
-        printf("insert_restore_reg_code\n");
-        print_instr_lst(n->code);
-
         instruction_entry_t *current = n->code;
         while (current != NULL && (strcmp(current->entry->code, "loadAI") != 0 || current->entry->op3 != RET)) {
             current = current->next;
@@ -182,6 +169,8 @@ void generate_fun_decl(node *fun) {
                                   fun->nodes[0]->code);
 
     insert_restore_reg_code(fun->nodes[0], load_used_reg);
+    // Podemos liberar porque fizemos cópia dela na outra função
+    instr_lst_free(load_used_reg);
 
     if (strcmp(fun_name, "main") == 0) {
         // quando acabar a main a gente acaba a máquina com um halt
@@ -478,7 +467,6 @@ instruction_entry_t *generate_instructionB(int reg, int label1, int label2) {
     instr->op3_type = OT_LABEL;
     instr->op3 = label2;
     strcpy(instr->comment, "\0");
-    instr_counter++;
     return instr_lst_create_new(instr);
 }
 
@@ -492,7 +480,6 @@ instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int re
     instr->op3_type = OT_REG;
     instr->op3 = reg3;
     strcpy(instr->comment, "\0");
-    instr_counter++;
     return instr_lst_create_new(instr);
 }
 
@@ -506,7 +493,6 @@ instruction_entry_t *generate_instructionI(char *code, int reg1, int value, int 
     instr->op3_type = OT_REG;
     instr->op3 = reg3;
     strcpy(instr->comment, "\0");
-    instr_counter++;
     return instr_lst_create_new(instr);
 }
 
@@ -520,7 +506,6 @@ instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int 
     instr->op3_type = OT_IMED;
     instr->op3 = reg3;
     strcpy(instr->comment, "\0");
-    instr_counter++;
     return instr_lst_create_new(instr);
 }
 
@@ -534,7 +519,6 @@ instruction_entry_t *generate_jump(int reg) {
     instr->op3_type = OT_REG;
     instr->op3 = reg;
     strcpy(instr->comment, "\0");
-    instr_counter++;
     return instr_lst_create_new(instr);
 }
 
@@ -548,7 +532,6 @@ instruction_entry_t *generate_jumpI(int label) {
     instr->op3_type = OT_LABEL;
     instr->op3 = label;
     strcpy(instr->comment, "\0");
-    instr_counter++;
     return instr_lst_create_new(instr);
 }
 

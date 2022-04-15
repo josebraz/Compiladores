@@ -34,6 +34,6 @@ int fibonacci(int n) {
 }
 
 int main() { 
-    int x;
-    x = fibonacci(6); 
+    int i;
+    i = fibonacci(5);
 }

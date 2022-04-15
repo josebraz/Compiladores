@@ -7,12 +7,36 @@
 
 #include "instr_lst.h"
 
+int instr_lst_count(instruction_entry_t *list) {
+    instruction_entry_t *current = list;
+    int counter = 0;
+    while (current != NULL) {
+        if (current->entry->op1_type != OT_LABEL) {
+            counter++;
+        }
+        current = current->next;
+    }
+    return counter;
+}
+
+void instr_lst_free(instruction_entry_t *head) {
+    instruction_entry_t *temp;
+    instruction_entry_t *list = head;
+    while (list != NULL) {
+        temp = list->next;
+        free(list->entry);
+        free(list);
+        list = temp;
+    }
+}
+
 instruction_entry_t *instr_lst_copy(instruction_entry_t *source) {
     instruction_entry_t *temp = NULL;
     instruction_entry_t *current = source, *first = NULL, *last = NULL;
     while (current != NULL) {
-        temp = (instruction_entry_t*) malloc(sizeof(instruction_entry_t));
-        temp->entry = current->entry;
+        temp = (instruction_entry_t*) calloc(1, sizeof(instruction_entry_t));
+        temp->entry = (instruction_t*) malloc(sizeof(instruction_t));
+        *(temp->entry) = *(current->entry);
         temp->next = NULL;
         temp->previous = NULL;
 

@@ -7,6 +7,8 @@
 
 bool_list *bool_lst_create(int size, ...);
 
+void bool_list_free(bool_list *list);
+
 bool_list *bool_lst_new_entry(int *bool_pointer);
 
 bool_list *bool_lst_concat(bool_list *entry1, bool_list *entry2);
