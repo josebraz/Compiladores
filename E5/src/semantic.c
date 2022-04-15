@@ -1,4 +1,11 @@
 
+
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

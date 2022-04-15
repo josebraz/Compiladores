@@ -1,10 +1,14 @@
-/* autores: José Henrique da Silva Braz & Jeison Casonatti Caroly */
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
 
 %option yylineno
 %{
 
-  #include "parser.tab.h"
-  #include "types.h"
+  #include "../include/parser.tab.h"
+  #include "../include/types.h"
   #include <string.h>
   
   // Para compilar o analisador

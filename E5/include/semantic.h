@@ -1,3 +1,9 @@
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
+
 #ifndef SEMANTIC_H
 #define SEMANTIC_H
 

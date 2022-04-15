@@ -1,4 +1,8 @@
-/* autores: José Henrique da Silva Braz */
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,7 +85,7 @@ void generate_dot(void *arvore) {
     printf("}\n");
 }
 
-void exporta(void *arvore) {
+extern void exporta(void *arvore) {
     // print_tree_children(arvore);
     // print_tree_labels(arvore);
     generate_dot(arvore);
