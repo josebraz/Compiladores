@@ -1,3 +1,9 @@
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +11,7 @@
 #include "list.h"
 
 list_t *list_init() {
-    list_t* list = (list_t *) malloc(sizeof(list_t));
+    list_t* list = (list_t *) calloc(1, sizeof(list_t));
 
     if (list == NULL) {
         perror("Não foi possivel criar a lista!");
@@ -14,7 +20,7 @@ list_t *list_init() {
 
     list->actual_capacity = LIST_INITIAL_CAPACITY;
     list->size = 0;
-    list->entries = (list_entry_t **) malloc(sizeof(list_entry_t*) * LIST_INITIAL_CAPACITY);
+    list->entries = (list_entry_t **) calloc(LIST_INITIAL_CAPACITY, sizeof(list_entry_t*));
 
     if (list->entries == NULL) {
         perror("Não foi possivel alocar memória inicial para as entradas da lista!");

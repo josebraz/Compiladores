@@ -1,3 +1,9 @@
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +11,7 @@
 #include "stack.h"
 
 stack_t* stack_init() {
-    stack_t* stack = (stack_t *) malloc(sizeof(stack_t));
+    stack_t* stack = (stack_t *) calloc(1, sizeof(stack_t));
 
     if (stack == NULL) {
         perror("Não foi possivel criar a pilha!");
@@ -14,7 +20,7 @@ stack_t* stack_init() {
 
     stack->actual_capacity = STACK_INITIAL_CAPACITY;
     stack->index = -1;
-    stack->entries = (stack_entry_t **) malloc(sizeof(stack_entry_t*) * STACK_INITIAL_CAPACITY);
+    stack->entries = (stack_entry_t **) calloc(STACK_INITIAL_CAPACITY, sizeof(stack_entry_t*));
 
     if (stack->entries == NULL) {
         perror("Não foi possivel alocar memória inicial para as entradas da pilha!");

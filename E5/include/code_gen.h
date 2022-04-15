@@ -1,4 +1,9 @@
-/* autores: José Henrique da Silva Braz */
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
+
 
 #ifndef CODE_GEN_H
 #define CODE_GEN_H

@@ -1,3 +1,8 @@
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
 
 #ifndef LIST_H
 #define LIST_H

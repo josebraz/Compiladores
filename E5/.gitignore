@@ -1,5 +1,6 @@
-*.o
+/.vscode
+doc/*
+obj/*
+src/*.yy.c
+include/*.tab.*
 etapa5
-lex.yy.*
-parser.tab.*
-*.png
