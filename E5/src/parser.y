@@ -129,6 +129,7 @@ prog :
     prog global_decl { $$ = $1; }
   | prog type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($3, $2, $4, next_label());
+        free_node($4);
     } function_body { 
         node *fun = create_node_function($3, $6); 
         generate_fun_decl(fun);
@@ -142,6 +143,7 @@ prog :
     }
   | prog TK_PR_STATIC type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($4, $3, $5, next_label());
+        free_node($5);
     } function_body { 
         node *fun = create_node_function($4, $7); 
         generate_fun_decl(fun);
