@@ -119,13 +119,7 @@ Grupo: V
 // Única entrada, para setar a arvore
 s : { semantic_init(); } prog { 
     arvore = $2; 
-
-    // Only count instructions if the program is not the empty program
-    if ($2 != NULL)
-    {
-        int counter = instr_lst_count($2->code);
-        $2->code = instr_lst_join(2, generate_init_code(counter), $2->code); 
-    }
+    generate_init_code($2);
 };
 
 // O programa é um conjunto de declarações globais e

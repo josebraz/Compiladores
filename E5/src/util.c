@@ -15,91 +15,78 @@ Grupo: V
 #include "hashmap.h"
 #include "code_gen.h"
 
-void print_tree_children(void *arvore) {
-	int i;
-    node *n = (node *) arvore;
+// void print_tree_children(void *arvore) {
+// 	int i;
+//     node *n = (node *) arvore;
     
-    if (n == NULL) return;
+//     if (n == NULL) return;
     
-    for (i = 0; i < n->size; i++) {
-        if (n->nodes[i] != NULL) {
-            printf("%p, %p\n", n, n->nodes[i]);
-        }
-    }
-    if (n->next != NULL) {
-        printf("%p, %p\n", n, n->next);
-    }
+//     for (i = 0; i < n->size; i++) {
+//         if (n->nodes[i] != NULL) {
+//             printf("%p, %p\n", n, n->nodes[i]);
+//         }
+//     }
+//     if (n->next != NULL) {
+//         printf("%p, %p\n", n, n->next);
+//     }
 
-    for (i = 0; i < n->size; i++) {
-        print_tree_children(n->nodes[i]);
-    }
-    if (n->next != NULL) {
-        print_tree_children(n->next);
-    }
-}
+//     for (i = 0; i < n->size; i++) {
+//         print_tree_children(n->nodes[i]);
+//     }
+//     if (n->next != NULL) {
+//         print_tree_children(n->next);
+//     }
+// }
 
-void print_tree_labels(void *arvore) {
-	int i;
-    node *n = (node *) arvore;
+// void print_tree_labels(void *arvore) {
+// 	int i;
+//     node *n = (node *) arvore;
     
-    if (n == NULL) return;
+//     if (n == NULL) return;
     
-    printf("%p [label=\"%s\"];\n", n, n->label);
+//     printf("%p [label=\"%s\"];\n", n, n->label);
     
-    for (i = 0; i < n->size; i++) {
-        print_tree_labels(n->nodes[i]);
-    }
-    if (n->next != NULL) {
-        print_tree_labels(n->next);
-    }
-}
+//     for (i = 0; i < n->size; i++) {
+//         print_tree_labels(n->nodes[i]);
+//     }
+//     if (n->next != NULL) {
+//         print_tree_labels(n->next);
+//     }
+// }
 
-void generate_dot_rec(void *arvore) {
-    int i;
-    node *n = (node *) arvore;
+// void generate_dot_rec(void *arvore) {
+//     int i;
+//     node *n = (node *) arvore;
     
-    if (n == NULL) return;
+//     if (n == NULL) return;
     
-    printf("\t%ld [label=\"%s\" type=%d mark=%d]\n", n, n->label, n->type, n->mark);
+//     printf("\t%ld [label=\"%s\" type=%d mark=%d]\n", n, n->label, n->type, n->mark);
     
-    for (i = 0; i < n->size; i++) {
-        if (n->nodes[i] != NULL) {
-            printf("\t%ld -> %ld\n", n, n->nodes[i]);
-        }
-    }
-    if (n->next != NULL) {
-        printf("\t%ld -> %ld\n", n, n->next);
-    }
+//     for (i = 0; i < n->size; i++) {
+//         if (n->nodes[i] != NULL) {
+//             printf("\t%ld -> %ld\n", n, n->nodes[i]);
+//         }
+//     }
+//     if (n->next != NULL) {
+//         printf("\t%ld -> %ld\n", n, n->next);
+//     }
 
-    for (i = 0; i < n->size; i++) {
-        generate_dot_rec(n->nodes[i]);
-    }
-    if (n->next != NULL) {
-        generate_dot_rec(n->next);
-    }
-}
+//     for (i = 0; i < n->size; i++) {
+//         generate_dot_rec(n->nodes[i]);
+//     }
+//     if (n->next != NULL) {
+//         generate_dot_rec(n->next);
+//     }
+// }
 
-void generate_dot(void *arvore) {
-    printf("digraph {\n");
-    generate_dot_rec(arvore);
-    printf("}\n");
-}
+// void generate_dot(void *arvore) {
+//     printf("digraph {\n");
+//     generate_dot_rec(arvore);
+//     printf("}\n");
+// }
 
 extern void exporta(void *arvore) {
-    /* Only exports ast that exists (empty program SIGSEGV) */
-    if (arvore != NULL)
-    {
-        // print_tree_children(arvore);
-        // print_tree_labels(arvore);
-        
-        
-        /* ************************************************************************ */
-        /* OA: FOR ILOCSIM TESTS PURPOSE, WON'T GENERATE DOT, JUST INSTRUCTION LIST */
-        // generate_dot(arvore);
-        /* ************************************************************************ */
-
-
-        // print_stack();
+    if (arvore != NULL) {
         print_instr_lst(((node*) arvore)->code);
     }
 }
@@ -118,11 +105,8 @@ void free_tree(node *n) {
     free_node(n);
 }
 
-void libera(void *arvore) 
-{
-    /* Only free ast that exists (empty program SIGSEGV) */
-    if (arvore != NULL)
-    {
+void libera(void *arvore) {
+    if (arvore != NULL) {
         node *n = (node *) arvore;
         instr_lst_free(n->code);
         n->code = NULL;

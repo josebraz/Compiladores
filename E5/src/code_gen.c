@@ -25,6 +25,26 @@ Grupo: V
 #define RSP   -5
 #define RPC   -6
 
+instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int reg3);
+
+instruction_entry_t *generate_instructionI(char *code, int reg1, int value, int reg3);
+
+instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int reg3);
+
+instruction_entry_t *generate_instructionB(int reg, int label1, int label2);
+
+instruction_entry_t *generate_jumpI(int label);
+
+instruction_entry_t *generate_jump(int reg);
+
+instruction_entry_t *generate_label_instruction(int label);
+
+void comment_instruction(instruction_entry_t *entry, char *message, ...);
+
+void get_var_mem_loc(char *ident, int *reg, int *offset);
+
+void print_instruction(instruction_t *new_inst);
+
 int next_reg() {
     static int last_reg = 2;
     return last_reg++;
@@ -35,7 +55,11 @@ int next_label() {
     return last_label++;
 }
 
-instruction_entry_t *generate_init_code(int counter) {
+void generate_init_code(node *s) {
+    if (s == NULL) return;
+
+    int counter = instr_lst_count(s->code);
+
     hashmap_value_t *main_decl = find_declaration("main", NULL);
     if (main_decl == NULL) exit(1);
 
@@ -43,7 +67,11 @@ instruction_entry_t *generate_init_code(int counter) {
     instruction_entry_t *rsp_load = generate_instructionI("loadI", EMPTY, 1024, RSP);
     instruction_entry_t *rbss_load = generate_instructionI("loadI", EMPTY, counter + 6, RBSS);
     instruction_entry_t *jump_main = generate_jumpI(main_decl->fun_label);
-    return instr_lst_join(4, rfp_load, rsp_load, rbss_load, jump_main);
+
+    comment_instruction(rbss_load, "Altera para o primeiro endereço após o código do programa");
+    comment_instruction(jump_main, "Pula para a função main");
+
+    s->code = instr_lst_join(5, rfp_load, rsp_load, rbss_load, jump_main, s->code);
 }
 
 void generate_general_code(char *code, node *b, node *n1, node *n2) {
@@ -190,6 +218,7 @@ void generate_fun_decl(node *fun) {
     if (strcmp(fun_name, "main") == 0) {
         // quando acabar a main a gente acaba a máquina com um halt
         instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
+        comment_instruction(instr_halt, "Termina o programa");
         fun->code = instr_lst_join(2, fun->code, instr_halt);
     }
 }
@@ -204,11 +233,14 @@ void generate_fun_call(node *s, node *params) {
 
     // para cada parametro da função cria um store
     int param_offset = 16;
-    instruction_entry_t *param_lst = params->code;
+    instruction_entry_t *param_lst = NULL;
+    if (params != NULL) {
+        param_lst = params->code;
+    }
     node *p = params;
     while (p != NULL) {
         instruction_entry_t *p_store = generate_instructionS("storeAI", p->reg_result, RSP, param_offset);
-        comment_instruction(p_store, "grava o parametro %d da função", (param_offset - 16) / 4 + 1);
+        comment_instruction(p_store, "Grava o parametro %d da função", (param_offset - 16) / 4 + 1);
         param_lst = instr_lst_join(2, param_lst, p_store);
         param_offset += 4;
         p = p->next;
