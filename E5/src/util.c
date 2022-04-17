@@ -91,7 +91,14 @@ extern void exporta(void *arvore) {
     {
         // print_tree_children(arvore);
         // print_tree_labels(arvore);
-        generate_dot(arvore);
+        
+        
+        /* ************************************************************************ */
+        /* OA: FOR ILOCSIM TESTS PURPOSE, WON'T GENERATE DOT, JUST INSTRUCTION LIST */
+        // generate_dot(arvore);
+        /* ************************************************************************ */
+
+
         // print_stack();
         print_instr_lst(((node*) arvore)->code);
     }
