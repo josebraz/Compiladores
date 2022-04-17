@@ -57,4 +57,4 @@ test: all
 	@#./etapa5 < ${SRC}sample.c
 
 clean:
-	rm ${SRC}lex.yy.c ${INC}parser.tab.* ${OBJ}*.o etapa5 ${DOC}*.output ${OUT}*.c rm 
+	rm ${SRC}lex.yy.c ${INC}parser.tab.* ${OBJ}*.o etapa5 ${DOC}*.output ${OUT}*.c ${OUT}*.iloc rm 
