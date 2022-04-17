@@ -11,6 +11,12 @@ Grupo: V
 
 #include "instr_lst.h"
 
+/**
+ * @brief Counts instruction in the received argument list
+ * 
+ * @param list instruction_entry_t structure pointer
+ * @return int number of instructions
+ */
 int instr_lst_count(instruction_entry_t *list) {
     instruction_entry_t *current = list;
     int counter = 0;
@@ -18,6 +24,7 @@ int instr_lst_count(instruction_entry_t *list) {
         if (current->entry->op1_type != OT_LABEL) {
             counter++;
         }
+        
         current = current->next;
     }
     return counter;
