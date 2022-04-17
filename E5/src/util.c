@@ -86,11 +86,15 @@ void generate_dot(void *arvore) {
 }
 
 extern void exporta(void *arvore) {
-    // print_tree_children(arvore);
-    // print_tree_labels(arvore);
-    generate_dot(arvore);
-    // print_stack();
-    print_instr_lst(((node*) arvore)->code);
+    /* Only exports ast that exists (empty program SIGSEGV) */
+    if (arvore != NULL)
+    {
+        // print_tree_children(arvore);
+        // print_tree_labels(arvore);
+        generate_dot(arvore);
+        // print_stack();
+        print_instr_lst(((node*) arvore)->code);
+    }
 }
 
 void free_tree(node *n) {
@@ -107,11 +111,16 @@ void free_tree(node *n) {
     free_node(n);
 }
 
-void libera(void *arvore) {
-    node *n = (node *) arvore;
-    instr_lst_free(n->code);
-    n->code = NULL;
-    free_tree(arvore);
-    free_scopes();
+void libera(void *arvore) 
+{
+    /* Only free ast that exists (empty program SIGSEGV) */
+    if (arvore != NULL)
+    {
+        node *n = (node *) arvore;
+        instr_lst_free(n->code);
+        n->code = NULL;
+        free_tree(arvore);
+        free_scopes();
+    }
 }
 

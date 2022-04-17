@@ -4,6 +4,7 @@ INC := include/
 SRC := src/
 DOC := doc/
 TST := tests/
+OUT := tests/output/
 
 all: dirs asp.o util.o hashmap.o list.o semantic.o instr_lst.o code_gen.o bool_lst.o stack.o parser.tab.c lex.yy.c
 	gcc -c -g ${SRC}main.c -o ${OBJ}main.o -Wall
@@ -56,4 +57,4 @@ test: all
 	@#./etapa5 < ${SRC}sample.c
 
 clean:
-	rm ${SRC}lex.yy.c ${INC}parser.tab.* ${OBJ}*.o etapa5 ${DOC}*.output
+	rm ${SRC}lex.yy.c ${INC}parser.tab.* ${OBJ}*.o etapa5 ${DOC}*.output ${OUT}*.c rm 

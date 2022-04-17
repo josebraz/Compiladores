@@ -152,27 +152,38 @@ void generate_fun_decl(node *fun) {
 
     instruction_entry_t *store_used_reg = NULL;
     instruction_entry_t *load_used_reg = NULL;
-    instruction_entry_t *fun_body_code = fun->nodes[0]->code;
-    while (fun_body_code != NULL) {
-        if (is_destrutive_op(fun_body_code->entry) == 1) {
-            store_used_reg = instr_lst_join(2, store_used_reg, 
-                            generate_instructionS("storeAI", fun_body_code->entry->op3, RFP, rsp_gap));
-            load_used_reg = instr_lst_join(2, load_used_reg, 
-                            generate_instructionI("loadAI", RFP, rsp_gap, fun_body_code->entry->op3));
-            rsp_gap += 4;
+
+    // If this function has childrens
+    if (fun->nodes[0] != NULL)
+    {
+        instruction_entry_t *fun_body_code = fun->nodes[0]->code;
+
+        while (fun_body_code != NULL) 
+        {
+            if (is_destrutive_op(fun_body_code->entry) == 1) 
+            {
+                store_used_reg = instr_lst_join(2, store_used_reg, 
+                                generate_instructionS("storeAI", fun_body_code->entry->op3, RFP, rsp_gap));
+                load_used_reg = instr_lst_join(2, load_used_reg, 
+                                generate_instructionI("loadAI", RFP, rsp_gap, fun_body_code->entry->op3));
+                rsp_gap += 4;
+            }
+
+            fun_body_code = fun_body_code->next;
         }
-        fun_body_code = fun_body_code->next;
+        
+        comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
+        comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
+
+        instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
+
+        fun->code = instr_lst_join(5, instr_fun_label, update_rfp, 
+                                        update_rsp, store_used_reg, 
+                                        fun->nodes[0]->code);
+
+        insert_restore_reg_code(fun->nodes[0], load_used_reg);
     }
-    comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
-    comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
 
-    instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
-
-    fun->code = instr_lst_join(5, instr_fun_label, update_rfp, 
-                                  update_rsp, store_used_reg, 
-                                  fun->nodes[0]->code);
-
-    insert_restore_reg_code(fun->nodes[0], load_used_reg);
     // Podemos liberar porque fizemos cópia dela na outra função
     instr_lst_free(load_used_reg);
 

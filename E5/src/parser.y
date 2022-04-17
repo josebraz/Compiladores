@@ -118,10 +118,15 @@ Grupo: V
 
 // Única entrada, para setar a arvore
 s : { semantic_init(); } prog { 
-      arvore = $2; 
-      int counter = instr_lst_count($2->code);
-      $2->code = instr_lst_join(2, generate_init_code(counter), $2->code); 
-  };
+    arvore = $2; 
+
+    // Only count instructions if the program is not the empty program
+    if ($2 != NULL)
+    {
+        int counter = instr_lst_count($2->code);
+        $2->code = instr_lst_join(2, generate_init_code(counter), $2->code); 
+    }
+};
 
 // O programa é um conjunto de declarações globais e
 // declarações de funções, também é aceito uma linguagem vazia 
@@ -602,10 +607,10 @@ literal:
 
 // Declaração de tipos      
 type: 
-    TK_PR_INT { $$ = DT_INTEGER; }
-  | TK_PR_FLOAT { $$ = DT_FLOAT; }
-  | TK_PR_BOOL { $$ = DT_BOOL; }
-  | TK_PR_CHAR { $$ = DT_CHAR; }
+    TK_PR_INT    { $$ = DT_INTEGER; }
+  | TK_PR_FLOAT  { $$ = DT_FLOAT; }
+  | TK_PR_BOOL   { $$ = DT_BOOL; }
+  | TK_PR_CHAR   { $$ = DT_CHAR; }
   | TK_PR_STRING { $$ = DT_STRING; };
 
 %%
