@@ -1,6 +1,7 @@
 echo "Running a valgrind complete mem test"
 echo ""
 
+cd .. 
 make clean
 make
 
