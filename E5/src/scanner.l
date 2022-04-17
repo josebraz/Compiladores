@@ -139,7 +139,7 @@ COMMENT ((\/\/.*)|(\/\*[^(\*\/)]*\*\/))|(\/\*)|(\*\/)
 }
 
   /* Captar caracteres irrelevantes para a linguagem */
-[ \t\n]+ { }
+[ \t\n\r]+ { } /* Ignores tabs(\t), line feed (\n), windows carriage return (\r) */
 {COMMENT} { }
 
   /* Captar erros, se não bateu nenhum token acima */
