@@ -1,4 +1,11 @@
 
+
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -238,8 +245,6 @@ void ident_fun_declaration(
 
     enter_scope(ident);
 
-    print_node(params);
-
     list_t *args = list_init();
     node *p = params;
     while (p != NULL) {
@@ -257,8 +262,6 @@ void ident_fun_declaration(
 
         p = p->next;
     }       
-
-    list_print(args);
 
     hashmap_value_t *value = create_hashmap_value(return_type, NT_FUNCTION, 0, args);
     value->fun_label = label;
@@ -513,7 +516,6 @@ void hashmap_print(hashmap_t *map) {
 }
 
 void print_stack() {
-    stack_entry_t *entry;
     if (scope_stack != NULL) {
         for (int i = 0; i <= scope_stack->index; i++) {
             hashmap_print(scope_stack->entries[i]);

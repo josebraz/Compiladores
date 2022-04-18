@@ -1,4 +1,9 @@
-/* autores: José Henrique da Silva Braz & Jeison Casonatti Caroly */
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
+
 
 #ifndef ASP_H
 #define ASP_H

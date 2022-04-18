@@ -1,4 +1,8 @@
-/* autores: José Henrique da Silva Braz */
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -34,15 +38,19 @@ void hashmap_destroy(hashmap_t *map) {
         int fold = 0;
         int index = 0;
         while (fold < map->size) {
-            hashmap_entry_t *entry = map->values[index++];
+            hashmap_entry_t *entry = map->values[index];
             if (entry != NULL) {
                 if (entry->value->args != NULL) {
                     list_destroy(entry->value->args);
+                    entry->value->args = NULL;
                 }
                 free(entry->value);
+                entry->value = NULL;
                 free(entry);
                 fold++;
+                map->values[index] = NULL;
             }
+            index++;
         }
         free(map->values);
         free(map->label);

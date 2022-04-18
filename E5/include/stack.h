@@ -1,4 +1,8 @@
-/* autores: José Henrique da Silva Braz */
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
 
 #ifndef STACK_H
 #define STACK_H

@@ -1,4 +1,8 @@
-/* autores: José Henrique da Silva Braz & Jeison Casonatti Caroly */
+/*
+Nomes: José Henrique da Silva Braz 
+       Octavio do Amarante Arruda
+Grupo: V
+*/
 
 %{
   #include <stdio.h>
@@ -114,10 +118,9 @@
 
 // Única entrada, para setar a arvore
 s : { semantic_init(); } prog { 
-      arvore = $2; 
-      int counter = instr_lst_count($2->code);
-      $2->code = instr_lst_join(2, generate_init_code(counter), $2->code); 
-  };
+    arvore = $2; 
+    generate_init_code($2);
+};
 
 // O programa é um conjunto de declarações globais e
 // declarações de funções, também é aceito uma linguagem vazia 
@@ -125,6 +128,7 @@ prog :
     prog global_decl { $$ = $1; }
   | prog type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($3, $2, $4, next_label());
+        free_node($4);
     } function_body { 
         node *fun = create_node_function($3, $6); 
         generate_fun_decl(fun);
@@ -138,6 +142,7 @@ prog :
     }
   | prog TK_PR_STATIC type TK_IDENTIFICADOR function_params { 
         ident_fun_declaration($4, $3, $5, next_label());
+        free_node($5);
     } function_body { 
         node *fun = create_node_function($4, $7); 
         generate_fun_decl(fun);
@@ -596,10 +601,10 @@ literal:
 
 // Declaração de tipos      
 type: 
-    TK_PR_INT { $$ = DT_INTEGER; }
-  | TK_PR_FLOAT { $$ = DT_FLOAT; }
-  | TK_PR_BOOL { $$ = DT_BOOL; }
-  | TK_PR_CHAR { $$ = DT_CHAR; }
+    TK_PR_INT    { $$ = DT_INTEGER; }
+  | TK_PR_FLOAT  { $$ = DT_FLOAT; }
+  | TK_PR_BOOL   { $$ = DT_BOOL; }
+  | TK_PR_CHAR   { $$ = DT_CHAR; }
   | TK_PR_STRING { $$ = DT_STRING; };
 
 %%
