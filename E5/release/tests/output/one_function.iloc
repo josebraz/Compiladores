@@ -1,0 +1,5 @@
+loadI 1024 => rfp
+loadI 1024 => rsp
+loadI 7 => rbss               // Altera para o primeiro endereço após o código do programa
+jumpI  => L0                  // Pula para a função main
+halt                          // Termina o programa

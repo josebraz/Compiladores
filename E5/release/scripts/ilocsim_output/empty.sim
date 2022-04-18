@@ -1,0 +1,12 @@
+count	instruction
+
+instructions executed:    0
+register         read:    0 write:    0
+memory           read:    0 write:    0
+
+  register    value
+      rbss      500
+       rfp     1024
+       rpc        0
+
+    memory    value
