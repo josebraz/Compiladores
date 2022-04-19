@@ -94,7 +94,7 @@ extern void exporta(void *arvore) {
         int size = generate_depend_graph(((node*) arvore)->code, &graph);
         print_graph(size, graph);
 
-        try_color_graph(5, size, graph);
+        try_color_graph(6, size, graph);
     }
 }
 
