@@ -70,6 +70,8 @@ void print_instr_lst(instruction_entry_t *entry);
 
 void print_instruction(instruction_t *new_inst);
 
+void print_instruction(instruction_t *inst);
+
 #endif
 
 

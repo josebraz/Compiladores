@@ -177,11 +177,12 @@ void generate_fun_decl(node *fun) {
 
         instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
 
-        fun->code = instr_lst_join(5, instr_fun_label, update_rfp, 
-                                        update_rsp, store_used_reg, 
+        // TODO remover esses // coloquei só para simplificar o iloc
+        fun->code = instr_lst_join(4, instr_fun_label, update_rfp, 
+                                        update_rsp, // store_used_reg, 
                                         fun->nodes[0]->code);
 
-        insert_restore_reg_code(fun->nodes[0], load_used_reg);
+        // insert_restore_reg_code(fun->nodes[0], load_used_reg);
     }
 
     // Podemos liberar porque fizemos cópia dela na outra função

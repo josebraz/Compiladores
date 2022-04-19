@@ -14,6 +14,7 @@ Grupo: V
 #include "semantic.h"
 #include "hashmap.h"
 #include "code_gen.h"
+#include "depend_graph.h"
 
 void print_tree_children(void *arvore) {
 	int i;
@@ -86,21 +87,10 @@ void generate_dot(void *arvore) {
 }
 
 extern void exporta(void *arvore) {
-    /* Only exports ast that exists (empty program SIGSEGV) */
-    if (arvore != NULL)
-    {
-        // print_tree_children(arvore);
-        // print_tree_labels(arvore);
-        
-        
-        /* ************************************************************************ */
-        /* OA: FOR ILOCSIM TESTS PURPOSE, WON'T GENERATE DOT, JUST INSTRUCTION LIST */
-        // generate_dot(arvore);
-        /* ************************************************************************ */
-
-
-        // print_stack();
+    if (arvore != NULL) {
         print_instr_lst(((node*) arvore)->code);
+
+        generate_depend_graph(((node*) arvore)->code);
     }
 }
 

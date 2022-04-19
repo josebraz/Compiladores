@@ -149,4 +149,16 @@ instruction_entry_t *instr_lst_add_previous(instruction_entry_t *b, instruction_
     return instr_lst_add_next(a, new_inst);
 }
 
-
+int instr_lst_contain(instruction_entry_t *start, instruction_entry_t *end, instruction_t *find) {
+    instruction_entry_t *current = start;
+    while (current != NULL) {
+        if (current->entry == find) {
+            return 1;
+        }
+        if (current == end) {
+            return 0;
+        }
+        current = current->next;
+    }
+    return 0;
+}
