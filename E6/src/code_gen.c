@@ -17,8 +17,6 @@ Grupo: V
 #include "asp.h"
 #include "types.h"
 
-#define RET    1 // registrador para os end de retorno
-#define EFEM   0 // registrador efemero que pode mudar a qualquer momento
 #define EMPTY -1
 #define RBSS  -3
 #define RFP   -4
@@ -26,7 +24,7 @@ Grupo: V
 #define RPC   -6
 
 int next_reg() {
-    static int last_reg = 2;
+    static int last_reg = 0;
     return last_reg++;
 }
 
@@ -84,13 +82,17 @@ void generate_var_assignment(char *ident, node *b, node *init) {
 }
 
 void generate_fun_return(node *s, node *e) {
+    int rsp_reg = next_reg();
+    int rfp_reg = next_reg();
+    int ret_reg = next_reg();
+
     instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, 12);
-    instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, EFEM);
-    instruction_entry_t *copy_rsp = generate_instructionI("i2i", EFEM, EMPTY, RSP);
-    instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, EFEM);
-    instruction_entry_t *copy_rfp = generate_instructionI("i2i", EFEM, EMPTY, RFP);
-    instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, RET);
-    instruction_entry_t *jump_ret = generate_jump(RET);
+    instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, rsp_reg);
+    instruction_entry_t *copy_rsp = generate_instructionI("i2i", rsp_reg, EMPTY, RSP);
+    instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, rfp_reg);
+    instruction_entry_t *copy_rfp = generate_instructionI("i2i", rfp_reg, EMPTY, RFP);
+    instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, ret_reg);
+    instruction_entry_t *jump_ret = generate_jump(ret_reg);
 
     comment_instruction(load_ret_end, "Carrega end de retorno");
     comment_instruction(load_last_rsp, "Carrega ultimo RSP");
@@ -107,7 +109,7 @@ void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
     if (strcmp(n->label, "return") == 0) {
         instruction_entry_t *copy = instr_lst_copy(restore_code);
         instruction_entry_t *current = n->code;
-        while (current != NULL && (strcmp(current->entry->code, "loadAI") != 0 || current->entry->op3 != RET)) {
+        while (current != NULL && strcmp(current->entry->code, "loadAI") != 0) { // TODO remover o RET
             current = current->next;
         }
         if (current != NULL) {
@@ -216,8 +218,9 @@ void generate_fun_call(node *s, node *params) {
     }
 
     // prepara o endereço de retorno que é após essas 2 instr e do jump
-    instruction_entry_t *cal_ret_end = generate_instructionI("addI", RPC, 3, EFEM);
-    instruction_entry_t *store_ret_end = generate_instructionS("storeAI", EFEM, RSP, 0);
+    int ret_reg = next_reg();
+    instruction_entry_t *cal_ret_end = generate_instructionI("addI", RPC, 3, ret_reg);
+    instruction_entry_t *store_ret_end = generate_instructionS("storeAI", ret_reg, RSP, 0);
     instruction_entry_t *jump_fun = generate_jumpI(fun_decl->fun_label);
 
     int ret_value_reg = next_reg();

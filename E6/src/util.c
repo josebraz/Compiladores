@@ -90,7 +90,11 @@ extern void exporta(void *arvore) {
     if (arvore != NULL) {
         print_instr_lst(((node*) arvore)->code);
 
-        generate_depend_graph(((node*) arvore)->code);
+        char **graph;
+        int size = generate_depend_graph(((node*) arvore)->code, &graph);
+        print_graph(size, graph);
+
+        try_color_graph(5, size, graph);
     }
 }
 
