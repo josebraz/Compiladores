@@ -59,37 +59,44 @@ int compute_all_reg_live(instruction_entry_t *code, var_live **lst_pointer) {
     return size;
 }
 
-void print_graph(int size, const char **graph) {
+void print_graph(graph_t *graph) {
     printf("\t ");
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < graph->size; i++) {
         printf("%d\t", i);
     }
     printf("\n");
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < graph->size; i++) {
         printf("%d\t[", i);
         for (int j = 0; j <= i; j++) {
-            printf("%d\t", graph[i][j]);
+            printf("%d\t", graph->edges[i][j]);
         }
         printf("]\n");
     }
 }
 
-void free_depend_graph(int size, char **graph) {
-    for(int i = 0; i < size; i++) {
-        free(graph[i]);
+void free_depend_graph(graph_t *graph) {
+
+    for (int i = 0; i < graph->size; i++) {
+        free(graph->edges[i]);
     }
+
     free(graph);
 }
 
-void copy_depend_graph(int size, const char **graph_src, char ***graph_dest) {
-    char **graph = (char **) calloc(size, sizeof(char *));
-    for(int i = 0; i < size; i++) {
-        graph[i] = (char *) calloc(i+1, sizeof(char));
+graph_t *copy_depend_graph(graph_t *graph_source) {
+    graph_t *new_graph = (graph_t *)calloc(1, sizeof(graph_t));
+
+    new_graph->edges = (char **)calloc(graph_source->size, sizeof(char *));
+
+    for(int i = 0; i < graph_source->size; i++) {
+        new_graph->edges[i] = (char *) calloc(i+1, sizeof(char));
+        
         for(int j = 0; j <= i; j++) {
-            graph[i][j] = graph_src[i][j];
+            new_graph->edges[i][j] = graph_source->edges[i][j];
         }
     }
-    *graph_dest = graph;
+
+    return new_graph;
 }
 
 int generate_depend_graph(instruction_entry_t *code, char ***graph_result) {
@@ -124,15 +131,16 @@ int generate_depend_graph(instruction_entry_t *code, char ***graph_result) {
     return size;
 }
 
-int count_neighborhood(int node, int size, char **graph) {
+int count_neighborhood(int node, graph_t *graph) {
     int counter = 0;
+
     for (int j = 0; j <= node; j++) { // percorre a linha toda
-        if (graph[node][j] == 1) {
+        if (graph->edges[node][j] == 1) {
             counter++;
         }
     }
-    for (int i = node; i < size; i++) { // percorre a coluna toda
-        if (graph[i][node] == 1) {
+    for (int i = node; i < graph->size; i++) { // percorre a coluna toda
+        if (graph->edges[i][node] == 1) {
             counter++;
         }
     }
@@ -199,39 +207,41 @@ int set_node_color(int node, int colors, int *g_colors, char *neigh_colors) {
  * @param g_colors     vetor de cores já atribuídas
  * @param neigh_colors vetor de cores da vizinhaça
  */
-void populate_neighborhood_colors(int node, int size, const char **graph, const int *g_colors, char *neigh_colors) {
+void populate_neighborhood_colors(int node, graph_t *graph, const int *g_colors, char *neigh_colors) {
     for (int j = 0; j <= node; j++) { // percorre a linha toda
-        if (graph[node][j] == 1 && g_colors[j] != INVALID_COLOR) {
+        if (graph->edges[node][j] == 1 && g_colors[j] != INVALID_COLOR) {
             neigh_colors[g_colors[j]] = 1;
         }
     }
-    for (int i = node; i < size; i++) { // percorre a coluna toda
-        if (graph[i][node] == 1 && g_colors[i] != INVALID_COLOR) {
+    for (int i = node; i < graph->size; i++) { // percorre a coluna toda
+        if (graph->edges[i][node] == 1 && g_colors[i] != INVALID_COLOR) {
             neigh_colors[g_colors[i]] = 1;
         }
     }
 }
 
-int try_color_graph(int colors, int size, const char **graph_original) {
-    int colored_nodes_num = 0;   // contador de quantos nodos tem cor
-    char **graph;                // cópia do grafo
-    int g_node_color[size];      // indica qual a cor do nodo i
-    char g_node_processed[size]; // indica se o nodo i foi processado já
+int try_color_graph(int colors, graph_t *graph) {
+    int colored_nodes_num = 0; // contador de quantos nodos tem cor
+    int g_node_color[graph->size];      // indica qual a cor do nodo i
+    char g_node_processed[graph->size]; // indica se o nodo i foi processado já
     bool neigh_colors[colors];   // 1 se a cor i já foi escolhida na vizinhança, 0 caso contrário
 
-    copy_depend_graph(size, graph_original, &graph);
-    memset(g_node_color, INVALID_COLOR, size * sizeof(int)); // marca todos como ainda sem cor
-    memset(g_node_processed, 0, size * sizeof(char));        // marca todos como não processados
+    graph_t *graph_copy = copy_depend_graph(graph);
 
-    while (colored_nodes_num < size) { // ainda falta nodos pra colorir
+    memset(g_node_color, INVALID_COLOR, graph->size * sizeof(int)); // marca todos como ainda sem cor
+    memset(g_node_processed, 0, graph->size * sizeof(char));        // marca todos como não processados
+
+    while (colored_nodes_num < graph->size) { // ainda falta nodos pra colorir
         memset(neigh_colors, 0, colors * sizeof(char));
         int enter_process = colored_nodes_num;
         int node = 0;
-        while (node < size && enter_process == colored_nodes_num) {
+
+        while (node < graph->size && enter_process == colored_nodes_num) {
             if (g_node_processed[node] == 0) {
-                int count = count_neighborhood(node, size, graph);
+                int count = count_neighborhood(node, (graph_t *)graph_copy);
+
                 if (count < colors) { // podemos processar esse nodo
-                    populate_neighborhood_colors(node, size, graph_original, g_node_color, neigh_colors);
+                    populate_neighborhood_colors(node, (graph_t *)graph, g_node_color, neigh_colors);
 
                     // escolhe uma cor ainda não atribuída aos vizinhos se precisa
                     if (set_node_color(node, colors, g_node_color, neigh_colors) == INVALID_COLOR) 
@@ -239,16 +249,16 @@ int try_color_graph(int colors, int size, const char **graph_original) {
 
                     // aloca uma cor para todos os visinhos ainda sem cor
                     for (int j = 0; j <= node; j++) { // percorre a linha toda
-                        if (graph[node][j] == 1)
+                        if (graph_copy->edges[node][j] == 1)
                             if (set_node_color(j, colors, g_node_color, neigh_colors) == INVALID_COLOR)
                                 goto failure;
-                        graph[node][j] = 0; // já remove o nodo
+                        graph_copy->edges[node][j] = 0; // já remove o nodo
                     }
-                    for (int i = node; i < size; i++) { // percorre a coluna toda
-                        if (graph[i][node] == 1)
+                    for (int i = node; i < graph->size; i++) { // percorre a coluna toda
+                        if (graph_copy->edges[i][node] == 1)
                             if (set_node_color(i, colors, g_node_color, neigh_colors) == INVALID_COLOR)
                                 goto failure;
-                        graph[i][node] = 0; // já remove o nodo
+                        graph_copy->edges[i][node] = 0; // já remove o nodo
                     }
 
                     g_node_processed[node] = 1;
@@ -258,7 +268,7 @@ int try_color_graph(int colors, int size, const char **graph_original) {
             node++;
         }
 
-        if (node == size && colored_nodes_num < size) {
+        if (node == graph->size  && colored_nodes_num < graph->size ) {
             // não conseguimos dar cor pra nenhum nodo nessa passagem, então 
             // não é possível colorir esse grafo com essa quantidade de cores
             goto failure;
@@ -266,17 +276,19 @@ int try_color_graph(int colors, int size, const char **graph_original) {
     }
 
     printf("CORES:\n");
-    for (int i = 0; i < size; i++) {
+
+    for (int i = 0; i < graph->size ; i++) {
         printf("%d - %d\n", i, g_node_color[i]);
     }
+    
     printf("\n");
 
-    free_depend_graph(size, graph);
+    free_depend_graph((graph_t*)graph_copy);
     return 1;
 
 failure:
     printf("FAIL");
-    free_depend_graph(size, graph);
+    free_depend_graph((graph_t*)graph_copy);
     return 0;
 }
 
