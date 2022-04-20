@@ -10,6 +10,17 @@ Grupo: V
 
 #include "types.h"
 
+typedef struct __var_live {
+    int var;
+    instruction_entry_t *start;
+    instruction_entry_t *end;
+} var_live;
+
+typedef struct __graph {
+    int size;
+    char **edges;
+} graph_t;
+
 void print_graph(int size, const char **graph);
 
 int generate_depend_graph(instruction_entry_t *code, char ***graph_result);

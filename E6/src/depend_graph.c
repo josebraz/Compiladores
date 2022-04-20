@@ -14,13 +14,8 @@ Grupo: V
 #include "code_gen.h"
 #include "types.h"
 
+#define bool char
 #define INVALID_COLOR -1
-
-typedef struct __var_live {
-    int var;
-    instruction_entry_t *start;
-    instruction_entry_t *end;
-} var_live;
 
 int get_live_interval(int reg, instruction_entry_t *instr, instruction_entry_t **start, instruction_entry_t **end) {
     instruction_entry_t *f_start = NULL, *f_end = NULL;
@@ -153,104 +148,133 @@ void remove_node(int node, int size, char **graph) {
     }
 }
 
-int find_available_color(int colors, char *temp_colors) {
+/**
+ * Encontra uma cor ainda não escolhida no vetor de cores neigh_colors
+ * 
+ * @param colors       total de cores
+ * @param neigh_colors vetor de cores da vizinhaça
+ * @return int         a cor escolhida ou #INVALID_COLOR se não tem nenhuma cor disponível
+ */
+int find_available_color(int colors, char *neigh_colors) {
     for (int i = 0; i < colors; i++) {
-        if (temp_colors[i] == 0) {
+        if (neigh_colors[i] == 0) {
             return i;
         }
     }
-    return -1;
+    return INVALID_COLOR;
 }
 
-int set_node_color(int node, int colors, int *g_colors, char *temp_colors) {
+/**
+ * Escolhe uma cor do nodo se ele ainda não não tiver nenhum cor
+ * ou mantem a cor que o nodo já tem
+ * 
+ * @param node         número do nodo
+ * @param colors       total de cores
+ * @param g_colors     vetor de cores já atribuídas
+ * @param neigh_colors vetor de cores da vizinhaça
+ * @return int         a cor do nodo ou #INVALID_COLOR se não conseguiu dar uma cor nova
+ */
+int set_node_color(int node, int colors, int *g_colors, char *neigh_colors) {
     if (g_colors[node] != INVALID_COLOR) {
         return g_colors[node];
     }
 
-    int new_color = find_available_color(colors, temp_colors);
+    int new_color = find_available_color(colors, neigh_colors);
     if (new_color == -1) return -1;
     g_colors[node] = new_color;
-    temp_colors[new_color] = 1;
+    neigh_colors[new_color] = 1;
 
     return new_color;
 }
 
-void populate_neighborhood_colors(int node, int size, const char **graph, const int *g_colors, char *temp_colors) {
+/**
+ * Popula o vetor neigh_colors com as cores da vizinhança de node
+ * no neigh_colors o índice é a cor e o valor é 1 se a cor i está 
+ * presente na vizinhança e 0 caso não esteja
+ * 
+ * @param node         número do nodo
+ * @param size         tamanho do grafo
+ * @param graph        grafo modelado como uma matriz
+ * @param colors       total de cores
+ * @param g_colors     vetor de cores já atribuídas
+ * @param neigh_colors vetor de cores da vizinhaça
+ */
+void populate_neighborhood_colors(int node, int size, const char **graph, const int *g_colors, char *neigh_colors) {
     for (int j = 0; j <= node; j++) { // percorre a linha toda
         if (graph[node][j] == 1 && g_colors[j] != INVALID_COLOR) {
-            temp_colors[g_colors[j]] = 1;
+            neigh_colors[g_colors[j]] = 1;
         }
     }
     for (int i = node; i < size; i++) { // percorre a coluna toda
         if (graph[i][node] == 1 && g_colors[i] != INVALID_COLOR) {
-            temp_colors[g_colors[i]] = 1;
+            neigh_colors[g_colors[i]] = 1;
         }
     }
 }
 
 int try_color_graph(int colors, int size, const char **graph_original) {
-    int process = 0;          // contador de quantos nodos tem cor
-    char **graph;             // cópia do grafo
-    int g_colors[size];       // indica qual a cor do nodo i
-    char g_process[size];     // indica se o nodo i foi processado já
-    char temp_colors[colors]; // 1 se a cor i já foi escolhida na vizinhança, 0 caso contrário
+    int colored_nodes_num = 0;   // contador de quantos nodos tem cor
+    char **graph;                // cópia do grafo
+    int g_node_color[size];      // indica qual a cor do nodo i
+    char g_node_processed[size]; // indica se o nodo i foi processado já
+    bool neigh_colors[colors];   // 1 se a cor i já foi escolhida na vizinhança, 0 caso contrário
 
     copy_depend_graph(size, graph_original, &graph);
-    memset(g_colors, INVALID_COLOR, size * sizeof(int)); // marca todos como ainda sem cor
-    memset(g_process, 0, size * sizeof(char));           // marca todos como não processados
+    memset(g_node_color, INVALID_COLOR, size * sizeof(int)); // marca todos como ainda sem cor
+    memset(g_node_processed, 0, size * sizeof(char));        // marca todos como não processados
 
-    while (process < size) {
-        memset(temp_colors, 0, colors * sizeof(char));
-        int enter_process = process;
+    while (colored_nodes_num < size) { // ainda falta nodos pra colorir
+        memset(neigh_colors, 0, colors * sizeof(char));
+        int enter_process = colored_nodes_num;
         int node = 0;
-        while (node < size && enter_process == process) {
-            if (g_process[node] == 0) {
+        while (node < size && enter_process == colored_nodes_num) {
+            if (g_node_processed[node] == 0) {
                 int count = count_neighborhood(node, size, graph);
                 if (count < colors) { // podemos processar esse nodo
-                    populate_neighborhood_colors(node, size, graph_original, g_colors, temp_colors);
+                    populate_neighborhood_colors(node, size, graph_original, g_node_color, neigh_colors);
 
                     // escolhe uma cor ainda não atribuída aos vizinhos se precisa
-                    if (set_node_color(node, colors, g_colors, temp_colors) == INVALID_COLOR) 
-                        goto fail;
+                    if (set_node_color(node, colors, g_node_color, neigh_colors) == INVALID_COLOR) 
+                        goto failure;
 
                     // aloca uma cor para todos os visinhos ainda sem cor
                     for (int j = 0; j <= node; j++) { // percorre a linha toda
                         if (graph[node][j] == 1)
-                            if (set_node_color(j, colors, g_colors, temp_colors) == INVALID_COLOR)
-                                goto fail;
+                            if (set_node_color(j, colors, g_node_color, neigh_colors) == INVALID_COLOR)
+                                goto failure;
                         graph[node][j] = 0; // já remove o nodo
                     }
                     for (int i = node; i < size; i++) { // percorre a coluna toda
                         if (graph[i][node] == 1)
-                            if (set_node_color(i, colors, g_colors, temp_colors) == INVALID_COLOR)
-                                goto fail;
+                            if (set_node_color(i, colors, g_node_color, neigh_colors) == INVALID_COLOR)
+                                goto failure;
                         graph[i][node] = 0; // já remove o nodo
                     }
 
-                    g_process[node] = 1;
-                    process++;
+                    g_node_processed[node] = 1;
+                    colored_nodes_num++;
                 }
             }
             node++;
         }
 
-        if (node == size && process < size) {
+        if (node == size && colored_nodes_num < size) {
             // não conseguimos dar cor pra nenhum nodo nessa passagem, então 
             // não é possível colorir esse grafo com essa quantidade de cores
-            goto fail;
+            goto failure;
         }
     }
 
     printf("CORES:\n");
     for (int i = 0; i < size; i++) {
-        printf("%d - %d\n", i, g_colors[i]);
+        printf("%d - %d\n", i, g_node_color[i]);
     }
     printf("\n");
 
     free_depend_graph(size, graph);
     return 1;
 
-fail:
+failure:
     printf("FAIL");
     free_depend_graph(size, graph);
     return 0;
