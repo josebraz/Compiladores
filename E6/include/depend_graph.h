@@ -40,7 +40,7 @@ void print_graph(graph_t *graph);
  * @brief Gera e retorna o tamanho do grafo necessário a partir do código
  * 
  */
-int generate_depend_graph(instruction_entry_t *code, char ***graph_result);
+graph_t *generate_depend_graph(instruction_entry_t *code);
 
 /**
  * @brief Conta os vizinhos de um nodo do grafo
@@ -52,6 +52,6 @@ int count_neighborhood(int node, graph_t *graph);
  * @brief Tenta colorir o grafo graph com k colors
  * 
  */
-int try_color_graph(int colors, graph_t *graph);
+int try_color_graph(int colors, graph_t *graph, int **node_colors);
 
 #endif

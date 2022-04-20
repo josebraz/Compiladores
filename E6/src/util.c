@@ -90,16 +90,17 @@ extern void exporta(void *arvore) {
     if (arvore != NULL) {
         print_instr_lst(((node*) arvore)->code);
 
-        char **generated_graph_reference;
-        int size = generate_depend_graph(((node*) arvore)->code, &generated_graph_reference);
+        graph_t *graph = generate_depend_graph(((node*) arvore)->code);
 
-        graph_t *graph = (graph_t *)malloc(sizeof(graph_t));
-        graph->edges = generated_graph_reference;
-        graph->size = size;
+        int *node_colors;
+        print_graph(graph);
+        try_color_graph(6, graph, &node_colors);
 
-        print_graph((graph_t *)graph);
-
-        try_color_graph(6, (graph_t *)graph);
+        printf("CORES:\n");
+        for (int i = 0; i < graph->size ; i++) {
+            printf("%d - %d\n", i, node_colors[i]);
+        }
+        printf("\n");
     }
 }
 

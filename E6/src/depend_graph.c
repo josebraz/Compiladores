@@ -85,7 +85,7 @@ void free_depend_graph(graph_t *graph) {
 
 graph_t *copy_depend_graph(graph_t *graph_source) {
     graph_t *new_graph = (graph_t *)calloc(1, sizeof(graph_t));
-
+    new_graph->size = graph_source->size;
     new_graph->edges = (char **)calloc(graph_source->size, sizeof(char *));
 
     for(int i = 0; i < graph_source->size; i++) {
@@ -99,7 +99,7 @@ graph_t *copy_depend_graph(graph_t *graph_source) {
     return new_graph;
 }
 
-int generate_depend_graph(instruction_entry_t *code, char ***graph_result) {
+graph_t *generate_depend_graph(instruction_entry_t *code) {
     var_live *live_lst;
     int size = compute_all_reg_live(code, &live_lst);
 
@@ -127,8 +127,11 @@ int generate_depend_graph(instruction_entry_t *code, char ***graph_result) {
     free(live_lst);
     live_lst = NULL;
 
-    *graph_result = graph;
-    return size;
+    graph_t *new_graph = (graph_t *)calloc(1, sizeof(graph_t));
+    new_graph->edges = graph;
+    new_graph->size = size;
+
+    return new_graph;
 }
 
 int count_neighborhood(int node, graph_t *graph) {
@@ -220,9 +223,9 @@ void populate_neighborhood_colors(int node, graph_t *graph, const int *g_colors,
     }
 }
 
-int try_color_graph(int colors, graph_t *graph) {
+int try_color_graph(int colors, graph_t *graph, int **node_colors) {
     int colored_nodes_num = 0; // contador de quantos nodos tem cor
-    int g_node_color[graph->size];      // indica qual a cor do nodo i
+    int *g_node_color = (int *) calloc(graph->size, sizeof(int));      // indica qual a cor do nodo i
     char g_node_processed[graph->size]; // indica se o nodo i foi processado já
     bool neigh_colors[colors];   // 1 se a cor i já foi escolhida na vizinhança, 0 caso contrário
 
@@ -238,10 +241,10 @@ int try_color_graph(int colors, graph_t *graph) {
 
         while (node < graph->size && enter_process == colored_nodes_num) {
             if (g_node_processed[node] == 0) {
-                int count = count_neighborhood(node, (graph_t *)graph_copy);
+                int count = count_neighborhood(node, graph_copy);
 
                 if (count < colors) { // podemos processar esse nodo
-                    populate_neighborhood_colors(node, (graph_t *)graph, g_node_color, neigh_colors);
+                    populate_neighborhood_colors(node, graph, g_node_color, neigh_colors);
 
                     // escolhe uma cor ainda não atribuída aos vizinhos se precisa
                     if (set_node_color(node, colors, g_node_color, neigh_colors) == INVALID_COLOR) 
@@ -275,20 +278,15 @@ int try_color_graph(int colors, graph_t *graph) {
         }
     }
 
-    printf("CORES:\n");
-
-    for (int i = 0; i < graph->size ; i++) {
-        printf("%d - %d\n", i, g_node_color[i]);
-    }
-    
-    printf("\n");
-
-    free_depend_graph((graph_t*)graph_copy);
+    free_depend_graph(graph_copy);
+    *node_colors = g_node_color;
     return 1;
 
 failure:
     printf("FAIL");
-    free_depend_graph((graph_t*)graph_copy);
+    free_depend_graph(graph_copy);
+    free(g_node_color);
+    *node_colors = NULL;
     return 0;
 }
 
