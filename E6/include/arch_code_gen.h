@@ -9,8 +9,9 @@ Grupo: V
 #define ARCH_CODE_H
 
 #include "types.h"
+#include "depend_graph.h"
 
-instruction_entry_t *arch_convert_code(instruction_entry_t *input);
+instruction_entry_t *arch_convert_code(instruction_entry_t *instruction_list, int* node_colors, graph_t* graph);
 
 
 #endif

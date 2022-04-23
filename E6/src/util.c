@@ -94,13 +94,14 @@ extern void exporta(void *arvore) {
 
         int *node_colors;
         print_graph(graph);
-        try_color_graph(6, graph, &node_colors);
+        try_color_graph(10, graph, &node_colors);
+        arch_convert_code(((node*) arvore)->code, node_colors, graph);
 
-        printf("CORES:\n");
+        // printf("CORES:\n");
         for (int i = 0; i < graph->size ; i++) {
-            printf("%d - %d\n", i, node_colors[i]);
+            // printf("%d - %d\n", i, node_colors[i]);
         }
-        printf("\n");
+        // printf("\n");
     }
 }
 
