@@ -14,7 +14,7 @@ Grupo: V
 #include "semantic.h"
 #include "hashmap.h"
 #include "code_gen.h"
-#include "depend_graph.h"
+#include "arch_code_gen.h"
 
 void print_tree_children(void *arvore) {
 	int i;
@@ -61,15 +61,15 @@ void generate_dot_rec(void *arvore) {
     
     if (n == NULL) return;
     
-    printf("\t%ld [label=\"%s\" type=%d mark=%d]\n", n, n->label, n->type, n->mark);
+    printf("\t%ld [label=\"%s\" type=%d mark=%d]\n", (long)n, n->label, n->type, n->mark);
     
     for (i = 0; i < n->size; i++) {
         if (n->nodes[i] != NULL) {
-            printf("\t%ld -> %ld\n", n, n->nodes[i]);
+            printf("\t%ld -> %ld\n", (long)n, (long)n->nodes[i]);
         }
     }
     if (n->next != NULL) {
-        printf("\t%ld -> %ld\n", n, n->next);
+        printf("\t%ld -> %ld\n", (long)n, (long)n->next);
     }
 
     for (i = 0; i < n->size; i++) {
@@ -88,21 +88,30 @@ void generate_dot(void *arvore) {
 
 extern void exporta(void *arvore) {
     if (arvore != NULL) {
-        print_instr_lst(((node*) arvore)->code);
+        // print_instr_lst(((node*) arvore)->code);
 
         graph_t *graph = generate_depend_graph(((node*) arvore)->code);
 
         int *node_colors;
-        print_graph(graph);
-        try_color_graph(10, graph, &node_colors);
-        arch_convert_code(((node*) arvore)->code, node_colors, graph);
 
-        // printf("CORES:\n");
-        for (int i = 0; i < graph->size ; i++) {
-            // printf("%d - %d\n", i, node_colors[i]);
-        }
-        // printf("\n");
+        // print_graph(graph);
+
+        try_color_graph(10, graph, &node_colors);
+
+        optimize_iloc_register_usage(((node*) arvore)->code, node_colors, graph);
+        
+        //print_graph_node_colors(graph, node_colors);
     }
+}
+
+void print_graph_node_colors(graph_t *graph, int *node_colors)
+{
+    printf("CORES:\n");
+
+    for (int i = 0; i < graph->size ; i++) 
+        printf("%d - %d\n", i, node_colors[i]);
+
+    printf("\n");
 }
 
 void free_tree(node *n) {

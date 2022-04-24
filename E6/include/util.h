@@ -8,6 +8,7 @@ Grupo: V
 #define UTIL_H
 
 #include "types.h"
+#include "depend_graph.h"
 
 /**
  * Escreve na saída padrão o texto formatado
@@ -37,5 +38,7 @@ void print_tree_children(void *arvore);
  * @param arvore 
  */
 void print_tree_labels(void *arvore);
+
+void print_graph_node_colors(graph_t *graph, int *node_colors);
 
 #endif

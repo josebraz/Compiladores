@@ -405,6 +405,7 @@ int print_instr_param(int op, int op_type) {
     }
 }
 
+// TODO: criar um print_instruction_x86_64 para imprimir x86_64 (x86_code_gen.c)
 void print_instruction(instruction_t *inst) {
     int char_counter = 0;
     if (inst->op1_type == OT_LABEL) {

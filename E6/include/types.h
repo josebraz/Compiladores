@@ -22,7 +22,11 @@ enum op_type {
 typedef struct __instruction {
     char code[10];
     char comment[100];
+
+    // operand 1 type
     enum op_type op1_type;
+
+    // operand 1
     int op1;
     enum op_type op2_type;
     int op2;
