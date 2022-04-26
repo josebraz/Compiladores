@@ -15,23 +15,68 @@ Grupo: V
 
 #define REG_NUM 16
 
-// 1:1 com registradores x86_64 com ILOC até onde der
-void get_reg_label(int reg, char *dest) {
-    switch (reg) {
-    // case 0 == r0
-    case 0:
-        strcpy(dest, "rax");
-        break;
-    case 1:
-        strcpy(dest, "rbx");
-        break;
-    default:
-        break;
-    }
+/*
+Special x86_64 regs ref: https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
+
+rbp - register base pointer (start of stack)
+rsp - register stack pointer (current location in stack, growing downwards)
+rsi - register source index (source for data copies)
+rdi - register destination index (destination for data copies)
+*/
+
+void print_x86_64_assembly_code(instruction_entry_t *instruction_list)
+{
+    printf("DEBUG: print_x86_64_assembly_code called\n");
 }
 
-// r0 => rax
-// r1 => rbx
+/**
+ * @brief Get the x86 64 assembly register name object 
+ * There are 12 registers to use, 4 of them are the special registers on this file header
+ * @param reg 
+ * @param dest 
+ */
+void get_x86_64_assembly_register_name(int reg, char *dest) {
+    switch (reg) {
+        case 0:
+            strcpy(dest, "rax");
+            break;
+        case 1:
+            strcpy(dest, "rbx");
+            break;
+        case 2:
+            strcpy(dest, "rcx");
+            break;
+        case 3:
+            strcpy(dest, "rdx");
+            break;
+        case 4:
+            strcpy(dest, "r8");
+            break;
+        case 5:
+            strcpy(dest, "r9");
+            break;
+        case 6:
+            strcpy(dest, "r10");
+            break;
+        case 7:
+            strcpy(dest, "r11");
+            break;
+        case 8:
+            strcpy(dest, "r12");
+            break;
+        case 9:
+            strcpy(dest, "r13");
+            break;
+        case 10:
+            strcpy(dest, "r14");
+            break;
+        case 11:
+            strcpy(dest, "r15");
+            break;
+        default:
+            break;
+    }
+}
 
 instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *instruction_list, int* node_colors, graph_t* graph) {
     instruction_entry_t *instruction_list_copy = instruction_list;

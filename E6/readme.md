@@ -7,6 +7,12 @@
 ## Grupo: 
 - V
 
+## Implementação
+- 1ª Passagem geração ILOC
+- 2ª Passagem otimização alocação registradores ILOC
+  - Abordagem utilizando vida util da variável e grafos apresentada na aula "N12 A5 Alocação de Registradores"
+- 3ª Passagem geração código x86_64 assembly a partir do código ILOC com reg. otimizado
+
 ### Geração de código assembly
 - Mapeamento direto de instruções iloc para instruções de assembly
 - O código assembly gerado deve ser capaz de ser utilizado por um montador para gerar um executável
