@@ -101,6 +101,8 @@ extern void exporta(void *arvore) {
         optimize_iloc_register_usage(((node*) arvore)->code, node_colors, graph);
         
         //print_graph_node_colors(graph, node_colors);
+
+        print_x86_64_assembly_code(((node*) arvore)->code);
     }
 }
 

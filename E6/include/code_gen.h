@@ -8,6 +8,12 @@ Grupo: V
 #ifndef CODE_GEN_H
 #define CODE_GEN_H
 
+#define EMPTY -1
+#define RBSS  -3
+#define RFP   -4
+#define RSP   -5
+#define RPC   -6
+
 #include "types.h"
 
 int next_reg();
