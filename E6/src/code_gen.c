@@ -146,8 +146,8 @@ void generate_fun_decl(node *fun) {
 
     comment_instruction(instr_fun_label, "Declaração da função %s", fun_name);
 
-    instruction_entry_t *store_used_reg = NULL;
-    instruction_entry_t *load_used_reg = NULL;
+    instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START);
+    instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START);
 
     // If this function has childrens
     if (fun->nodes[0] != NULL)
@@ -167,18 +167,23 @@ void generate_fun_decl(node *fun) {
 
             fun_body_code = fun_body_code->next;
         }
-        
+
+        store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END));
         comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
+
+        load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END));
         comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
 
         instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
 
-        // TODO remover esses // coloquei só para simplificar o iloc
-        fun->code = instr_lst_join(4, instr_fun_label, update_rfp, 
-                                        update_rsp, // store_used_reg, 
-                                        fun->nodes[0]->code);
+        instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START);
+        instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END);
 
-        // insert_restore_reg_code(fun->nodes[0], load_used_reg);
+        fun->code = instr_lst_join(7, instr_fun_label, start_fun_mark, update_rfp, 
+                                        update_rsp, store_used_reg, 
+                                        fun->nodes[0]->code, end_fun_mark);
+
+        insert_restore_reg_code(fun->nodes[0], load_used_reg);
     }
 
     // Podemos liberar porque fizemos cópia dela na outra função
@@ -544,6 +549,19 @@ instruction_entry_t *generate_jumpI(int label) {
     instr->op2 = EMPTY;
     instr->op3_type = OT_LABEL;
     instr->op3 = label;
+    strcpy(instr->comment, "\0");
+    return instr_lst_create_new(instr);
+}
+
+instruction_entry_t *generate_mark(int type) {
+    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    strcpy(instr->code, "jumpI");
+    instr->op1_type = OT_DISABLED;
+    instr->op1 = EMPTY;
+    instr->op2_type = OT_DISABLED;
+    instr->op2 = EMPTY;
+    instr->op3_type = OT_MARK;
+    instr->op3 = type;
     strcpy(instr->comment, "\0");
     return instr_lst_create_new(instr);
 }

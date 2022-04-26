@@ -16,6 +16,13 @@ Grupo: V
 
 #include "types.h"
 
+#define CODE_MARK_FUN_START          1
+#define CODE_MARK_FUN_END            2
+#define CODE_MARK_SAVE_REGS_START    3
+#define CODE_MARK_SAVE_REGS_END      4
+#define CODE_MARK_LOAD_REGS_START    5
+#define CODE_MARK_LOAD_REGS_END      6
+
 int next_reg();
 
 int next_label();
@@ -67,6 +74,8 @@ instruction_entry_t *generate_jumpI(int label);
 instruction_entry_t *generate_jump(int reg);
 
 instruction_entry_t *generate_label_instruction(int label);
+
+instruction_entry_t *generate_mark(int type);
 
 void comment_instruction(instruction_entry_t *entry, char *message, ...);
 

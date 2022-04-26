@@ -18,8 +18,6 @@ Grupo: V
 
 #define REG_NUM 16
 
-int char_counter = 0;
-
 /*
 Special x86_64 regs ref: https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
 
@@ -51,15 +49,15 @@ void print_assembly_instruction(instruction_t *instruction) {
 
 void print_label(instruction_t *instruction) {
     if (instruction->op1_type == OT_LABEL) {
-        char_counter += printf("L%d:\n", instruction->op1);
+        printf("L%d:\n", instruction->op1);
     }
 }
 
 void print_store(instruction_t *instruction) {
     if (strncmp(instruction->code, "store", 5) == 0) {
-        char_counter += printf("mov ");
+        printf("mov ");
         print_instruction_parameter((int)instruction->op1, instruction->op1_type);
-        char_counter += printf(",");
+        printf(",");
         print_instruction_parameter(instruction->op2, instruction->op2_type);
         printf("\n");
     }
@@ -70,17 +68,17 @@ void print_storeAI(instruction_t *instruction) {
     if (strncmp(instruction->code, "storeAI", 7) == 0) {
         // add the immediate address
         // need to have the add address on some register than mov it to the store register...
-        char_counter += printf("add");
+        printf("add");
         print_instruction_parameter(instruction->op1, instruction->op1_type);
-        char_counter += printf(",");
+        printf(",");
         print_instruction_parameter(instruction->op2, instruction->op2_type);
 
         printf("\n");
 
         // print move
-        char_counter += printf("mov ");
+        printf("mov ");
         print_instruction_parameter(instruction->op1, instruction->op1_type);
-        char_counter += printf(",");
+        printf(",");
         print_instruction_parameter(instruction->op2, instruction->op2_type);
 
         printf("\n");
@@ -97,17 +95,11 @@ void print_storeAI(instruction_t *instruction) {
 void print_instruction_parameter(int op, int op_type) {
     // TODO: special registers on x86_64
     if (op_type == OT_IMED)
-        char_counter += printf(" %d", op);
-    else if (op == RBSS)
-        char_counter += printf(" rbss");
-    else if (op == RFP)
-        char_counter += printf(" rfp");
-    else if (op == RPC)
-        char_counter += printf(" rpc");
+        printf(" $%d", op);
     else {
         char register_name[10];
         get_x86_64_assembly_register_name(op, register_name);
-        printf(" %s", register_name);
+        printf(" %%%s", register_name);
     }
 }
 
@@ -116,17 +108,17 @@ void print_add(instruction_t *instruction) {
         // add r1, r2 => r3 // r3 = r1 + r2
 
         // add r1, r2 // r1 = source, destiny = r2
-        char_counter += printf("add");
+        printf("add");
         print_instruction_parameter(instruction->op1, instruction->op1_type);
-        char_counter += printf(" ,");
+        printf(" ,");
         print_instruction_parameter(instruction->op2, instruction->op2_type);
 
         printf("\n");
 
         // add r2, r3 // r2 = source, destiny = r3
-        char_counter += printf("add");
+        printf("add");
         print_instruction_parameter(instruction->op2, instruction->op2_type);
-        char_counter += printf(" ,");
+        printf(" ,");
         print_instruction_parameter(instruction->op3, instruction->op3_type);
 
         printf("\n");
@@ -141,6 +133,15 @@ void print_add(instruction_t *instruction) {
  */
 void get_x86_64_assembly_register_name(int reg, char *dest) {
     switch (reg) {
+        case RBSS:
+            strcpy(dest, "rbss");
+            break;
+        case  RFP:
+            strcpy(dest, "rfp");
+            break;
+        case RPC:
+            strcpy(dest, "rip");
+            break;
         case 0:
             strcpy(dest, "rax");
             break;
@@ -222,3 +223,4 @@ instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *instructi
 // TODO: Agora temos o ILOC com regs otimizados
 // TODO: Mapear regs até os regs que temos no x86_64 assembly, pros regs do ILOC
 // TODO: Devolver algum código inteiro quando não for possível mapear o registrador (derramamento)
+// TODO: Colocar o "movl $0, %eax" antes de um call (pra não deixar lixo no eax)
