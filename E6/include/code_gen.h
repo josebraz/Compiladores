@@ -22,6 +22,13 @@ Grupo: V
 #define CODE_MARK_SAVE_REGS_END      4
 #define CODE_MARK_LOAD_REGS_START    5
 #define CODE_MARK_LOAD_REGS_END      6
+#define CODE_MARK_INIT_CODE_START    7
+#define CODE_MARK_INIT_CODE_END      8
+#define CODE_MARK_FUN_RET_START      9
+#define CODE_MARK_FUN_RET_END        10
+#define CODE_MARK_FUN_CALL_START     11
+#define CODE_MARK_FUN_CALL_END       12
+
 
 int next_reg();
 
@@ -75,7 +82,7 @@ instruction_entry_t *generate_jump(int reg);
 
 instruction_entry_t *generate_label_instruction(int label);
 
-instruction_entry_t *generate_mark(int type);
+instruction_entry_t *generate_mark(int type, int p1, int p2);
 
 void comment_instruction(instruction_entry_t *entry, char *message, ...);
 

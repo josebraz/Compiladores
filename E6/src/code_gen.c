@@ -31,11 +31,14 @@ instruction_entry_t *generate_init_code(int counter) {
     hashmap_value_t *main_decl = find_declaration("main", NULL);
     if (main_decl == NULL) exit(1);
 
+    instruction_entry_t *start_init_code = generate_mark(CODE_MARK_INIT_CODE_START, 0, 0);
     instruction_entry_t *rfp_load = generate_instructionI("loadI", EMPTY, 1024, RFP);
     instruction_entry_t *rsp_load = generate_instructionI("loadI", EMPTY, 1024, RSP);
     instruction_entry_t *rbss_load = generate_instructionI("loadI", EMPTY, counter + 6, RBSS);
     instruction_entry_t *jump_main = generate_jumpI(main_decl->fun_label);
-    return instr_lst_join(4, rfp_load, rsp_load, rbss_load, jump_main);
+    instruction_entry_t *end_init_code = generate_mark(CODE_MARK_INIT_CODE_END, 0, 0);
+
+    return instr_lst_join(6, start_init_code, rfp_load, rsp_load, rbss_load, jump_main, end_init_code);
 }
 
 void generate_general_code(char *code, node *b, node *n1, node *n2) {
@@ -80,6 +83,7 @@ void generate_fun_return(node *s, node *e) {
     int rfp_reg = next_reg();
     int ret_reg = next_reg();
 
+    instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0);
     instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, 12);
     instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, rsp_reg);
     instruction_entry_t *copy_rsp = generate_instructionI("i2i", rsp_reg, EMPTY, RSP);
@@ -87,6 +91,7 @@ void generate_fun_return(node *s, node *e) {
     instruction_entry_t *copy_rfp = generate_instructionI("i2i", rfp_reg, EMPTY, RFP);
     instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, ret_reg);
     instruction_entry_t *jump_ret = generate_jump(ret_reg);
+    instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0);
 
     comment_instruction(load_ret_end, "Carrega end de retorno");
     comment_instruction(load_last_rsp, "Carrega ultimo RSP");
@@ -94,9 +99,10 @@ void generate_fun_return(node *s, node *e) {
     comment_instruction(e->code, "Início do retorno");
     comment_instruction(store_result, "Escreve o valor de retorno na pilha");
 
-    s->code = instr_lst_join(8, e->code, store_result,
-                                load_ret_end, load_last_rsp, copy_rsp, 
-                                load_last_rfp, copy_rfp, jump_ret);
+    s->code = instr_lst_join(10, ret_start_mark, e->code, store_result,
+                                 load_last_rsp, copy_rsp, 
+                                 load_last_rfp, copy_rfp, 
+                                 load_ret_end, jump_ret, ret_end_mark);
 }
 
 void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
@@ -125,8 +131,7 @@ void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
 }
 
 int is_destrutive_op(instruction_t *inst) {
-    if (inst->op3_type == OT_REG && inst->op3 >= 2 && 
-        (inst->op1 != EMPTY || inst->op2 != EMPTY)) {
+    if (inst->op3_type == OT_REG && (inst->op1 != EMPTY || inst->op2 != EMPTY)) {
         return 1;
     } else {
         return 0;
@@ -146,8 +151,8 @@ void generate_fun_decl(node *fun) {
 
     comment_instruction(instr_fun_label, "Declaração da função %s", fun_name);
 
-    instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START);
-    instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START);
+    instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START, 0, 0);
+    instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START, 0, 0);
 
     // If this function has childrens
     if (fun->nodes[0] != NULL)
@@ -168,16 +173,16 @@ void generate_fun_decl(node *fun) {
             fun_body_code = fun_body_code->next;
         }
 
-        store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END));
+        store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END, 0, 0));
         comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
 
-        load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END));
+        load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END, 0, 0));
         comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
 
         instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
 
-        instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START);
-        instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END);
+        instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START, 0, 0);
+        instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END, 0, 0);
 
         fun->code = instr_lst_join(7, instr_fun_label, start_fun_mark, update_rfp, 
                                         update_rsp, store_used_reg, 
@@ -201,6 +206,8 @@ void generate_fun_call(node *s, node *params) {
     hashmap_t *global_scope;
     hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
 
+    instruction_entry_t *start_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_START, 0, 0);
+    instruction_entry_t *end_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_END, 0, 0);
     instruction_entry_t *store_rsp = generate_instructionS("storeAI", RSP, RSP, 4);
     instruction_entry_t *store_rfp = generate_instructionS("storeAI", RFP, RSP, 8);
 
@@ -230,9 +237,10 @@ void generate_fun_call(node *s, node *params) {
     comment_instruction(jump_fun, "Salta para a função %s()", fun_name);
 
     s->reg_result = ret_value_reg;
-    s->code = instr_lst_join(7, store_rsp, store_rfp, 
+    s->code = instr_lst_join(9, start_fun_call_mark, store_rsp, store_rfp, 
                                 param_lst, cal_ret_end,
-                                store_ret_end, jump_fun, load_return_value);
+                                store_ret_end, jump_fun, 
+                                load_return_value, end_fun_call_mark);
 }
 
 void generate_for(node *s, node *s1, node *b, node *s2, node *s3) {
@@ -404,10 +412,62 @@ int print_instr_param(int op, int op_type) {
     }
 }
 
+int print_mark(instruction_t *inst) {
+    int char_counter = 0;
+    char_counter += printf("// MARK: ");
+    switch (inst->op1)
+    {
+    case CODE_MARK_FUN_START:
+        char_counter += printf("FUN START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_FUN_END:
+        char_counter += printf("FUN END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_SAVE_REGS_START:
+        char_counter += printf("SAVE REGS START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_SAVE_REGS_END:
+        char_counter += printf("SAVE REGS END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_LOAD_REGS_START:
+        char_counter += printf("LOAD REGS START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_LOAD_REGS_END:
+        char_counter += printf("LOAD REGS END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_INIT_CODE_START:
+        char_counter += printf("INIT CODE START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_INIT_CODE_END:
+        char_counter += printf("INIT CODE END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_FUN_CALL_START:
+        char_counter += printf("FUN CALL START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_FUN_CALL_END:
+        char_counter += printf("FUN CALL END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_FUN_RET_START:
+        char_counter += printf("FUN RET START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_FUN_RET_END:
+        char_counter += printf("FUN RET END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    default:
+        break;
+    }
+    return char_counter;
+}
+
 void print_instruction(instruction_t *inst) {
     int char_counter = 0;
     if (inst->op1_type == OT_LABEL) {
         char_counter += printf("L%d:", inst->op1);
+    } else if (inst->op1_type == OT_MARK) {
+        char_counter += print_mark(inst);
+    } else  if (strncmp(inst->code, "jump", 4) == 0) {
+        char_counter += printf("%s => ", inst->code);
+        char_counter += print_instr_param(inst->op1, inst->op1_type);
     } else if (strncmp(inst->code, "store", 5) == 0 || strcmp(inst->code, "cbr") == 0) {
         char_counter += printf("%s ", inst->code);
         char_counter += print_instr_param(inst->op1, inst->op1_type);
@@ -530,12 +590,12 @@ instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int 
 instruction_entry_t *generate_jump(int reg) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "jump");
-    instr->op1_type = OT_DISABLED;
-    instr->op1 = EMPTY;
+    instr->op1_type = OT_REG;
+    instr->op1 = reg;
     instr->op2_type = OT_DISABLED;
     instr->op2 = EMPTY;
-    instr->op3_type = OT_REG;
-    instr->op3 = reg;
+    instr->op3_type = OT_DISABLED;
+    instr->op3 = EMPTY;
     strcpy(instr->comment, "\0");
     return instr_lst_create_new(instr);
 }
@@ -543,25 +603,25 @@ instruction_entry_t *generate_jump(int reg) {
 instruction_entry_t *generate_jumpI(int label) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "jumpI");
-    instr->op1_type = OT_DISABLED;
-    instr->op1 = EMPTY;
+    instr->op1_type = OT_LABEL;
+    instr->op1 = label;
     instr->op2_type = OT_DISABLED;
     instr->op2 = EMPTY;
-    instr->op3_type = OT_LABEL;
-    instr->op3 = label;
+    instr->op3_type = OT_DISABLED;
+    instr->op3 = EMPTY;
     strcpy(instr->comment, "\0");
     return instr_lst_create_new(instr);
 }
 
-instruction_entry_t *generate_mark(int type) {
+instruction_entry_t *generate_mark(int type, int p1, int p2) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "jumpI");
-    instr->op1_type = OT_DISABLED;
-    instr->op1 = EMPTY;
-    instr->op2_type = OT_DISABLED;
-    instr->op2 = EMPTY;
+    instr->op1_type = OT_MARK;
+    instr->op1 = type;
+    instr->op2_type = OT_MARK;
+    instr->op2 = p1;
     instr->op3_type = OT_MARK;
-    instr->op3 = type;
+    instr->op3 = p2;
     strcpy(instr->comment, "\0");
     return instr_lst_create_new(instr);
 }

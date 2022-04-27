@@ -29,3 +29,34 @@
 [ ] Deve ser reconhecido e montado para um programa executável através do comando: gcc saida.s -o programa
     - Onde programa é um executável
     - GCC não pode "reclamar de nada"
+
+### Conversões conhecidas
+| -------------------- | ------------------- | ----------------------- |
+| ILOC                 |   x86               |   Semantica             |
+| -------------------- | ------------------- | ----------------------- |
+| load r1 => r2        |   mov (%r1), %r2    |   r2 = Memoria(r1)      |
+| loadAI r1, c => r2   |   mov c(%r1), %r2   |   r2 = Memoria(r1 + c)  |
+| loadI c => r2        |   mov $c, %r2       |   r2 = c                |
+| store r1 => r2       |   mov %r1, (%r2)    |   Memoria(r2) = r1      |
+| storeAI r1 => r2, c  |   mov %r1, c(%r2)   |   Memoria(r2 + c) = r1  |
+| i2i r1 => r2         |   mov %r1, %r2      |   r2 = r1               |
+| add r1, r2 => r2     |   add %r1, %r2      |   r2 = r1 + r2          |
+| addI r1, c => r1     |   add $c, %r1       |   r1 = c + r2           |
+| sub r1, r2 => r2     |   sub %r1, %r2      |   r2 = r1 - r2          |
+| subI r1, c => r1     |   sub $c, %r1       |   r1 = r1 - c           |
+| rsubI r1, c => r1    |   sub %r1, $c       |   r1 = c - r1           |
+| mult r1, r2 => r2    |   imul %r1, %r2     |   r2 = r1 * r2          |
+| multI r1, c => r1    |   imul $c, %r1      |   r1 = r1 * c           |
+| div r1, r2 => r2     |   idiv %r1, %r2     |   r2 = r1 / r2          |
+| divI r1, c => r1     |   idiv $c, %r1      |   r1 = r1 / c           |
+| rdivI r1, c => r1    |   idiv %r1, $c      |   r1 = c / r1           |
+| and r1, r2 => r2     |   and %r1, %r2      |   r2 = r1 && r2         |
+| andI r1, c => r1     |   and $c, %r1       |   r2 = r1 && c          |
+| or r1, r2 => r2      |   or %r1, %r2       |   r2 = r1 || r2         |
+| orI r1, c => r1      |   or $c, %r1        |   r2 = r1 || c          |
+| xor r1, r2 => r2     |   xor %r1, %r2      |   r2 = r1 xor r2        |
+| xorI r1, c => r1     |   xor $c, %r1       |   r2 = r1 xor c         |
+| lshift r1, r2 => r2  |   sal %r1, %r2      |   r2 = r1 << r2         |
+| lshiftI r1, c => r2  |   sal $c, %r2       |   r2 = r1 << c          |
+| rshift r1, r2 => r2  |   sar %r1, %r2      |   r2 = r1 >> r2         |
+| rshiftI r1, c => r2  |   sar $c, %r2       |   r2 = r1 >> c          |

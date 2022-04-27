@@ -28,6 +28,12 @@ instruction_entry_t *instr_lst_add_previous(instruction_entry_t *entry, instruct
 
 int instr_lst_contain(instruction_entry_t *start, instruction_entry_t *end, instruction_t *find);
 
+instruction_entry_t *instr_lst_remove_mark_interval(
+    instruction_entry_t *inst, 
+    int start_mark, 
+    int end_mark
+);
+
 #endif
 
 

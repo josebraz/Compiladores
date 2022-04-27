@@ -41,7 +41,6 @@ void print_x86_64_assembly_code(instruction_entry_t *instruction_list) {
 }
 
 void print_assembly_instruction(instruction_t *instruction) {
-    // store a, b = mov a, b
     print_label(instruction);
     print_store(instruction);
     print_add(instruction);
@@ -93,7 +92,6 @@ void print_storeAI(instruction_t *instruction) {
 }
 
 void print_instruction_parameter(int op, int op_type) {
-    // TODO: special registers on x86_64
     if (op_type == OT_IMED)
         printf(" $%d", op);
     else {
@@ -136,8 +134,11 @@ void get_x86_64_assembly_register_name(int reg, char *dest) {
         case RBSS:
             strcpy(dest, "rbss");
             break;
-        case  RFP:
-            strcpy(dest, "rfp");
+        case RSP:
+            strcpy(dest, "rsp");
+            break;
+        case RFP:
+            strcpy(dest, "rbp");
             break;
         case RPC:
             strcpy(dest, "rip");
@@ -204,10 +205,7 @@ instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *instructi
 
         instruction_list_copy = instruction_list_copy->next;
     }
-
-    /* Prints the start of the instruction list */
-    print_instr_lst(instruction_list);
-
+    
     return instruction_list;
     // 1 - Simplificar os regs do ILOC (coloração de grafos) [x]
     //     1.1 Derramamento [ ]

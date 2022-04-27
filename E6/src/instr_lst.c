@@ -21,10 +21,9 @@ int instr_lst_count(instruction_entry_t *list) {
     instruction_entry_t *current = list;
     int counter = 0;
     while (current != NULL) {
-        if (current->entry->op1_type != OT_LABEL) {
+        if (current->entry->op1_type != OT_LABEL && current->entry->op1_type != OT_MARK) {
             counter++;
         }
-        
         current = current->next;
     }
     return counter;
@@ -161,4 +160,47 @@ int instr_lst_contain(instruction_entry_t *start, instruction_entry_t *end, inst
         current = current->next;
     }
     return 0;
+}
+
+instruction_entry_t *instr_lst_remove(instruction_entry_t *inst) {
+    instruction_entry_t *next = inst->next;
+    if (inst->previous != NULL) {
+        inst->previous->next = next;
+    }
+    if (next != NULL) {
+        next->previous = inst->previous;
+    }
+    free(inst->entry);
+    free(inst);
+    return next;
+}
+
+instruction_entry_t *instr_lst_remove_mark_interval(
+    instruction_entry_t *inst, 
+    int start_mark, 
+    int end_mark
+) {
+    instruction_entry_t *current = inst;
+    instruction_entry_t *start = NULL;
+    int is_removing = 0;
+    while (current != NULL) {
+        // estamos ainda procurando a marcação de start
+        if (current->entry->op1_type == OT_MARK && current->entry->op1 == start_mark) {
+            is_removing = 1;
+        }
+        if (is_removing == 1) {
+            // Estamos na marcação de end
+            if (current->entry->op1_type == OT_MARK && current->entry->op1 == end_mark) {
+                is_removing = 0;
+            }
+            current = instr_lst_remove(current);
+        } else {
+            if (start == NULL) {
+                start = current;
+            }
+            current = current->next;
+        }
+    }
+
+    return start;
 }
