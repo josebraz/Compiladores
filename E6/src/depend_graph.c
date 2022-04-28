@@ -23,7 +23,7 @@ int get_live_interval(int reg, instruction_entry_t *instr, instruction_entry_t *
     while (current != NULL) {
         if (f_start == NULL) {
             // fase de procurar a primeira declaração
-            if (current->entry->op3 == reg && current->entry->op3_type == OT_REG) {
+            if (current->entry->reg_result == reg) {
                 f_start = current;
                 f_end = current;
             }
@@ -75,7 +75,6 @@ void print_graph(graph_t *graph) {
 }
 
 void free_depend_graph(graph_t *graph) {
-
     for (int i = 0; i < graph->size; i++) {
         free(graph->edges[i]);
     }
@@ -112,10 +111,10 @@ graph_t *generate_depend_graph(instruction_entry_t *code) {
     while (current_instr != NULL) {
         for (int i = 0; i < size; i++) {
             var_live current_live = live_lst[i];
-            if (instr_lst_contain(current_live.start, current_live.end, current_instr->entry) == 1) {
-                for (int j = 0; j < i; j++) {
+            if (instr_lst_contain(current_live.start->next, current_live.end, current_instr->entry) == 1) {
+                for (int j = 0; j <= i; j++) {
                     var_live other_live = live_lst[j];
-                    if (instr_lst_contain(other_live.start, other_live.end, current_instr->entry) == 1) {
+                    if (instr_lst_contain(other_live.start->next, other_live.end, current_instr->entry) == 1) {
                         graph[i][j] = 1;
                     }
                 }
@@ -283,7 +282,6 @@ int try_color_graph(int colors, graph_t *graph, int **node_colors) {
     return 1;
 
 failure:
-    printf("FAIL");
     free_depend_graph(graph_copy);
     free(g_node_color);
     *node_colors = NULL;

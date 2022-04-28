@@ -105,7 +105,13 @@ extern void exporta(void *arvore) {
 
         print_graph(graph);
 
-        int result = try_color_graph(20, graph, &node_colors);
+        // tenta colorir o grafo com 3 cores primeiro e vai aumentando
+        int result = 0;
+        int colors = 2;
+        while (result == 0) {
+            colors++;
+            result = try_color_graph(colors, graph, &node_colors);
+        }
 
         if (result == 1) {
             print_graph_node_colors(graph, node_colors);

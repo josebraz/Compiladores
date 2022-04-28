@@ -41,10 +41,51 @@ instruction_entry_t *generate_init_code(int counter) {
     return instr_lst_join(6, start_init_code, rfp_load, rsp_load, rbss_load, jump_main, end_init_code);
 }
 
+instruction_entry_t *remove_lazy_of_result(instruction_entry_t *instr, int reg, instruction_entry_t **fold) {
+    instruction_entry_t *start = instr;
+    instruction_entry_t *current = instr;
+    while (current != NULL) {
+        if (current->entry->lazy == 1 && current->entry->reg_result == reg) {
+            instruction_entry_t *next = current->next;
+            if (current->previous != NULL) {
+                current->previous->next = next;
+            }
+            if (next != NULL) {
+                next->previous = current->previous;
+            }
+            *fold = current;
+            if (start == current) {
+                start = current->previous;
+            }
+            break;
+        }
+        current = current->next;
+    }
+    return start;
+}
+
 void generate_general_code(char *code, node *b, node *n1, node *n2) {
     b->reg_result = next_reg();
+
+    instruction_entry_t *lazy_op1 = NULL, *lazy_op2 = NULL;
+
+    n1->code = remove_lazy_of_result(n1->code, n1->reg_result, &lazy_op1);
+    if (lazy_op1 != NULL) {
+        lazy_op1->entry->lazy = 0;
+        lazy_op1->next = NULL;
+        lazy_op1->previous = NULL;
+    }
+    n2->code = remove_lazy_of_result(n2->code, n2->reg_result, &lazy_op2);
+     if (lazy_op2 != NULL) {
+        lazy_op2->entry->lazy = 0;
+        lazy_op2->next = NULL;
+        lazy_op2->previous = NULL;
+    }
+
     instruction_entry_t *instr = generate_instruction(code, n1->reg_result, n2->reg_result, b->reg_result);
-    b->code = instr_lst_join(3, n1->code, n2->code, instr);
+    instr->entry->reg_result = b->reg_result;
+    
+    b->code = instr_lst_join(5, n1->code, n2->code, lazy_op1, lazy_op2, instr);
 }
 
 void generate_change_signal(node *b, node *parent) {
@@ -54,6 +95,7 @@ void generate_change_signal(node *b, node *parent) {
         b->code = parent->code;
     } else {
         instruction_entry_t *instr = generate_instructionI("multI", parent->reg_result, -1, parent->reg_result);
+        instr->entry->reg_result = parent->reg_result;
         b->reg_result = parent->reg_result;
         b->code = instr_lst_join(2, parent->code, instr);
     }
@@ -65,8 +107,9 @@ void generate_var_load(node *n) {
     get_var_mem_loc(ident, &reg, &offset);
 
     n->reg_result = next_reg();
-
     instruction_entry_t *store_instr = generate_instructionI("loadAI", reg, offset, n->reg_result);
+    store_instr->entry->reg_result = n->reg_result;
+    
     comment_instruction(store_instr, "Carrega variável %s", ident);
 
     n->code = store_instr;
@@ -76,6 +119,8 @@ void generate_literal_load(node *n) {
     n->reg_result = next_reg();
     int value = *((int *) n->value);
     n->code = generate_instructionI("loadI", EMPTY, value, n->reg_result);
+    n->code->entry->lazy = 1;
+    n->code->entry->reg_result = n->reg_result;
 }
 
 void generate_var_assignment(char *ident, node *b, node *init) {
@@ -93,23 +138,8 @@ void generate_var_assignment(char *ident, node *b, node *init) {
 void generate_fun_return(node *s, node *e) {
     hashmap_t *function_scope = current_scope();
 
-    int rsp_reg = next_reg();
-    int rfp_reg = next_reg();
-    int ret_reg = next_reg();
-
-    instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0);
     instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, 12);
-    instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, rsp_reg);
-    instruction_entry_t *copy_rsp = generate_instructionI("i2i", rsp_reg, EMPTY, RSP);
-    instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, rfp_reg);
-    instruction_entry_t *copy_rfp = generate_instructionI("i2i", rfp_reg, EMPTY, RFP);
-    instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, ret_reg);
-    instruction_entry_t *jump_ret = generate_jump(ret_reg);
-    instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0);
 
-    comment_instruction(load_ret_end, "Carrega end de retorno");
-    comment_instruction(load_last_rsp, "Carrega ultimo RSP");
-    comment_instruction(load_last_rfp, "Carrega ultimo RFP");
     comment_instruction(e->code, "Início do retorno");
     comment_instruction(store_result, "Escreve o valor de retorno na pilha");
 
@@ -118,6 +148,23 @@ void generate_fun_return(node *s, node *e) {
         comment_instruction(instr_halt, "Termina o programa");
         s->code = instr_lst_join(3, e->code, store_result, instr_halt);
     } else {
+        int rsp_reg = next_reg();
+        int rfp_reg = next_reg();
+        int ret_reg = next_reg();
+
+        instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0);
+        instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, rsp_reg);
+        instruction_entry_t *copy_rsp = generate_instructionI("i2i", rsp_reg, EMPTY, RSP);
+        instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, rfp_reg);
+        instruction_entry_t *copy_rfp = generate_instructionI("i2i", rfp_reg, EMPTY, RFP);
+        instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, ret_reg);
+        instruction_entry_t *jump_ret = generate_jump(ret_reg);
+        instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0);
+
+        comment_instruction(load_ret_end, "Carrega end de retorno");
+        comment_instruction(load_last_rsp, "Carrega ultimo RSP");
+        comment_instruction(load_last_rfp, "Carrega ultimo RFP");
+
         s->code = instr_lst_join(10, ret_start_mark, e->code, store_result,
                                  load_last_rsp, copy_rsp, 
                                  load_last_rfp, copy_rfp, 
@@ -129,7 +176,7 @@ void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
     if (strcmp(n->label, "return") == 0) {
         instruction_entry_t *copy = instr_lst_copy(restore_code);
         instruction_entry_t *current = n->code;
-        while (current != NULL && strcmp(current->entry->code, "loadAI") != 0) { // TODO remover o RET
+        while (current != NULL && strcmp(current->entry->code, "loadAI") != 0) {
             current = current->next;
         }
         if (current != NULL) {
@@ -245,6 +292,7 @@ void generate_fun_call(node *s, node *params) {
 
     int ret_value_reg = next_reg();
     instruction_entry_t *load_return_value = generate_instructionI("loadAI", RSP, 12, ret_value_reg);
+    load_return_value->entry->reg_result = ret_value_reg;
 
     comment_instruction(store_rsp, "Inicio da chamada de %s()", fun_name);
     comment_instruction(load_return_value, "Carrega o valor de retorno de %s()", fun_name);
@@ -399,6 +447,10 @@ void generate_relop(char *code, node *parent, node *b1, node *b2) {
 }
 
 void print_instr_lst(instruction_entry_t *entry) {
+    if (entry == NULL) {
+        printf("LIST NULL\n");
+        return;
+    }
     instruction_entry_t *current = entry;
     while (current != NULL && current->entry != NULL) {
         print_instruction(current->entry);
@@ -540,6 +592,8 @@ void comment_instruction(instruction_entry_t *entry, char *message, ...) {
 
 instruction_entry_t *generate_label_instruction(int label) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    instr->lazy = 0;
+    instr->reg_result = -1;
     instr->op1_type = OT_LABEL;
     instr->op1 = label;
     instr->op2_type = OT_DISABLED;
@@ -553,6 +607,8 @@ instruction_entry_t *generate_label_instruction(int label) {
 instruction_entry_t *generate_instructionB(int reg, int label1, int label2) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "cbr");
+    instr->lazy = 0;
+    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg;
     instr->op2_type = OT_LABEL;
@@ -566,6 +622,8 @@ instruction_entry_t *generate_instructionB(int reg, int label1, int label2) {
 instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int reg3) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, code);
+    instr->lazy = 0;
+    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg1;
     instr->op2_type = OT_REG;
@@ -579,6 +637,8 @@ instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int re
 instruction_entry_t *generate_instructionI(char *code, int reg1, int value, int reg3) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, code);
+    instr->lazy = 0;
+    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg1;
     instr->op2_type = OT_IMED;
@@ -592,6 +652,8 @@ instruction_entry_t *generate_instructionI(char *code, int reg1, int value, int 
 instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int reg3) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, code);
+    instr->lazy = 0;
+    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg1;
     instr->op2_type = OT_REG;
@@ -605,6 +667,8 @@ instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int 
 instruction_entry_t *generate_jump(int reg) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "jump");
+    instr->lazy = 0;
+    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg;
     instr->op2_type = OT_DISABLED;
@@ -618,6 +682,8 @@ instruction_entry_t *generate_jump(int reg) {
 instruction_entry_t *generate_jumpI(int label) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "jumpI");
+    instr->lazy = 0;
+    instr->reg_result = -1;
     instr->op1_type = OT_LABEL;
     instr->op1 = label;
     instr->op2_type = OT_DISABLED;
@@ -631,6 +697,8 @@ instruction_entry_t *generate_jumpI(int label) {
 instruction_entry_t *generate_mark(int type, int p1, int p2) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "jumpI");
+    instr->lazy = 0;
+    instr->reg_result = -1;
     instr->op1_type = OT_MARK;
     instr->op1 = type;
     instr->op2_type = OT_MARK;
