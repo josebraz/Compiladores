@@ -3,4 +3,5 @@ doc/*
 obj/*
 src/*.yy.c
 include/*.tab.*
+tests/output/*
 etapa5

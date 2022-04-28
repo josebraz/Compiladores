@@ -1,0 +1,11 @@
+//Expressoes aritmeticas, com operacoes binarias
+int main()
+{
+  int a;
+  int b;
+  int c;
+  b = 400;
+  c = 2;
+  a = b + b / c + b / c;
+  return 0;
+}
