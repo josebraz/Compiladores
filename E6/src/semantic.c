@@ -334,10 +334,10 @@ void ident_fun_use(char *ident, node *params) {
     enum data_type p_data_type;
     int p_index = 0;
     node *p = params;
-    while (p != NULL) {
+    while (p != NULL && value->args->size > p_index) {
         item = list_get(value->args, p_index);
         if (item == NULL) {
-            show_error_message(ERR_MISSING_ARGS, "Argumentos sobrando na chamada da função \"%s\"", ident);
+            show_error_message(ERR_EXCESS_ARGS, "Argumentos sobrando na chamada da função \"%s\"", ident);
         }
         p_data_type = infer_expression_type(p);
         if (p_data_type == DT_STRING) {

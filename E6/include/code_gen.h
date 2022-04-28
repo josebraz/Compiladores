@@ -8,11 +8,11 @@ Grupo: V
 #ifndef CODE_GEN_H
 #define CODE_GEN_H
 
-#define EMPTY -1
-#define RBSS  -3
-#define RFP   -4
-#define RSP   -5
-#define RPC   -6
+#define EMPTY -5000
+#define RBSS  -5001
+#define RFP   -5002
+#define RSP   -5003
+#define RPC   -5004
 
 #include "types.h"
 
@@ -59,6 +59,8 @@ void generate_false(node *b);
 void generate_relop(char *code, node *parent, node *n1, node *n2);
 
 void generate_general_code(char *code, node *b, node *n1, node *n2);
+
+void generate_change_signal(node *b, node *parent);
 
 void generate_var_load(node *n);
 
