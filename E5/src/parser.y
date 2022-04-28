@@ -257,7 +257,7 @@ local_decl_list:
         node *dest_node = create_leaf_id($1); 
         node *source_node = create_leaf_id($3); 
         if ($5 == NULL) {
-            $$ = create_node("<generate_var_assignment=", DECL_VAR_INIT_T, 2, dest_node, source_node); 
+            $$ = create_node("<=", DECL_VAR_INIT_T, 2, dest_node, source_node); 
         } else {
             $$ = create_node("<=", DECL_VAR_INIT_T, 3, dest_node, source_node, $5); 
         }
@@ -519,8 +519,15 @@ expression2:
   | expression1;
 
 expression1:
-    '+' expression1 { $$ = create_node_unary_ope("+", $2); } 
-  | '-' expression1 { $$ = create_node_unary_ope("-", $2); } 
+    '+' expression1 { 
+        $$ = create_node_unary_ope("+", $2);
+        // não faz nada na prática
+        $$->code = $2->code;
+    } 
+  | '-' expression1 { 
+        $$ = create_node_unary_ope("-", $2); 
+        generate_change_signal($$, $2);
+    } 
   | '?' expression1 { $$ = create_node_unary_ope("?", $2); } 
   | '!' expression1 { 
         $$ = create_node_unary_ope("!", $2); 
@@ -565,8 +572,7 @@ operand:
   | TK_IDENTIFICADOR '[' expression ']' { 
         $$ = create_node_id_array($1, $3); 
         ident_vector_use($1, $3);
-    } ;
-
+    };
 
 // Literais da linguagem
 literal: 

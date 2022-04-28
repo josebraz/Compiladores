@@ -147,6 +147,8 @@ void generate_relop(char *code, node *parent, node *n1, node *n2);
  */
 void generate_general_code(char *code, node *b, node *n1, node *n2);
 
+void generate_change_signal(node *b, node *parent);
+
 /**
  * Gera o código para o carregamento de uma
  * variável no nodo n

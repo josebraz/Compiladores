@@ -19,11 +19,11 @@ Grupo: V
 
 #define RET    1 // registrador para os end de retorno
 #define EFEM   0 // registrador efemero que pode mudar a qualquer momento
-#define EMPTY -1
-#define RBSS  -3
-#define RFP   -4
-#define RSP   -5
-#define RPC   -6
+#define EMPTY -5000
+#define RBSS  -5001
+#define RFP   -5002
+#define RSP   -5003
+#define RPC   -5004
 
 instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int reg3);
 
@@ -80,6 +80,18 @@ void generate_general_code(char *code, node *b, node *n1, node *n2) {
     b->code = instr_lst_join(3, n1->code, n2->code, instr);
 }
 
+void generate_change_signal(node *b, node *parent) {
+    if (parent->mark == LITERAL_T && parent->type == DT_INTEGER) {
+        parent->code->entry->op2 = -(parent->code->entry->op2);
+        b->reg_result = parent->reg_result;
+        b->code = parent->code;
+    } else {
+        instruction_entry_t *instr = generate_instructionI("multI", parent->reg_result, -1, parent->reg_result);
+        b->reg_result = parent->reg_result;
+        b->code = instr_lst_join(2, parent->code, instr);
+    }
+}
+
 void generate_var_load(node *n) {
     int reg, offset;
     char *ident = (char *) n->value;
@@ -112,6 +124,8 @@ void generate_var_assignment(char *ident, node *b, node *init) {
 }
 
 void generate_fun_return(node *s, node *e) {
+    hashmap_t *function_scope = current_scope();
+
     instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, 12);
     instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, EFEM);
     instruction_entry_t *copy_rsp = generate_instructionI("i2i", EFEM, EMPTY, RSP);
@@ -126,9 +140,15 @@ void generate_fun_return(node *s, node *e) {
     comment_instruction(e->code, "Início do retorno");
     comment_instruction(store_result, "Escreve o valor de retorno na pilha");
 
-    s->code = instr_lst_join(8, e->code, store_result,
+    if (strcmp(function_scope->label, "main") == 0) {
+        instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
+        comment_instruction(instr_halt, "Termina o programa");
+        s->code = instr_lst_join(3, e->code, store_result, instr_halt);
+    } else {
+        s->code = instr_lst_join(8, e->code, store_result,
                                 load_ret_end, load_last_rsp, copy_rsp, 
                                 load_last_rfp, copy_rfp, jump_ret);
+    }
 }
 
 void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
@@ -214,13 +234,6 @@ void generate_fun_decl(node *fun) {
 
     // Podemos liberar porque fizemos cópia dela na outra função
     instr_lst_free(load_used_reg);
-
-    if (strcmp(fun_name, "main") == 0) {
-        // quando acabar a main a gente acaba a máquina com um halt
-        instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
-        comment_instruction(instr_halt, "Termina o programa");
-        fun->code = instr_lst_join(2, fun->code, instr_halt);
-    }
 }
 
 void generate_fun_call(node *s, node *params) {
@@ -479,10 +492,11 @@ void get_var_mem_loc(char *ident, int *reg, int *offset) {
     }
     if (strcmp(scope->label, "global") == 0) {
         *reg = RBSS;
+        *offset = decl->men_offset;
     } else {
         *reg = RFP;
+        *offset = decl->men_offset + 16;
     }
-    *offset = decl->men_offset + 16;
 }
 
 void comment_instruction(instruction_entry_t *entry, char *message, ...) {

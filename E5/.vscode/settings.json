@@ -2,6 +2,7 @@
     "files.associations": {
         "types.h": "c",
         "stdarg.h": "c",
-        "bool_lst.h": "c"
+        "bool_lst.h": "c",
+        "type_traits": "c"
     }
 }
