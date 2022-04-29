@@ -84,7 +84,7 @@ instruction_entry_t *generate_jump(int reg);
 
 instruction_entry_t *generate_label_instruction(int label);
 
-instruction_entry_t *generate_mark(int type, int p1, int p2);
+instruction_entry_t *generate_mark(int type, int p1, int p2, char *param);
 
 void comment_instruction(instruction_entry_t *entry, char *message, ...);
 

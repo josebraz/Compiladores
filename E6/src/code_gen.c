@@ -31,12 +31,12 @@ instruction_entry_t *generate_init_code(int counter) {
     hashmap_value_t *main_decl = find_declaration("main", NULL);
     if (main_decl == NULL) exit(1);
 
-    instruction_entry_t *start_init_code = generate_mark(CODE_MARK_INIT_CODE_START, 0, 0);
+    instruction_entry_t *start_init_code = generate_mark(CODE_MARK_INIT_CODE_START, 0, 0, "");
     instruction_entry_t *rfp_load = generate_instructionI("loadI", EMPTY, 1024, RFP);
     instruction_entry_t *rsp_load = generate_instructionI("loadI", EMPTY, 1024, RSP);
     instruction_entry_t *rbss_load = generate_instructionI("loadI", EMPTY, counter + 6, RBSS);
     instruction_entry_t *jump_main = generate_jumpI(main_decl->fun_label);
-    instruction_entry_t *end_init_code = generate_mark(CODE_MARK_INIT_CODE_END, 0, 0);
+    instruction_entry_t *end_init_code = generate_mark(CODE_MARK_INIT_CODE_END, 0, 0, "");
 
     return instr_lst_join(6, start_init_code, rfp_load, rsp_load, rbss_load, jump_main, end_init_code);
 }
@@ -152,14 +152,14 @@ void generate_fun_return(node *s, node *e) {
         int rfp_reg = next_reg();
         int ret_reg = next_reg();
 
-        instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0);
+        instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0, "");
         instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, rsp_reg);
         instruction_entry_t *copy_rsp = generate_instructionI("i2i", rsp_reg, EMPTY, RSP);
         instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, rfp_reg);
         instruction_entry_t *copy_rfp = generate_instructionI("i2i", rfp_reg, EMPTY, RFP);
         instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, ret_reg);
         instruction_entry_t *jump_ret = generate_jump(ret_reg);
-        instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0);
+        instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0, "");
 
         comment_instruction(load_ret_end, "Carrega end de retorno");
         comment_instruction(load_last_rsp, "Carrega ultimo RSP");
@@ -218,8 +218,8 @@ void generate_fun_decl(node *fun) {
 
     comment_instruction(instr_fun_label, "Declaração da função %s", fun_name);
 
-    instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START, 0, 0);
-    instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START, 0, 0);
+    instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START, 0, 0, "");
+    instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START, 0, 0, "");
 
     // If this function has childrens
     if (fun->nodes[0] != NULL)
@@ -240,16 +240,16 @@ void generate_fun_decl(node *fun) {
             fun_body_code = fun_body_code->next;
         }
 
-        store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END, 0, 0));
+        store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END, 0, 0, ""));
         comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
 
-        load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END, 0, 0));
+        load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END, 0, 0, ""));
         comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
 
         instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
 
-        instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START, 0, 0);
-        instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END, 0, 0);
+        instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START, 0, 0, fun_name);
+        instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END, 0, 0, fun_name);
 
         fun->code = instr_lst_join(7, start_fun_mark, instr_fun_label, update_rfp, 
                                         update_rsp, store_used_reg, 
@@ -267,21 +267,25 @@ void generate_fun_call(node *s, node *params) {
     hashmap_t *global_scope;
     hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
 
-    instruction_entry_t *start_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_START, 0, 0);
-    instruction_entry_t *end_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_END, 0, 0);
+    instruction_entry_t *start_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_START, 0, 0, "");
+    instruction_entry_t *end_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_END, 0, 0, "");
     instruction_entry_t *store_rsp = generate_instructionS("storeAI", RSP, RSP, 4);
     instruction_entry_t *store_rfp = generate_instructionS("storeAI", RFP, RSP, 8);
 
     // para cada parametro da função cria um store
-    int param_offset = 16;
-    instruction_entry_t *param_lst = params->code;
-    node *p = params;
-    while (p != NULL) {
-        instruction_entry_t *p_store = generate_instructionS("storeAI", p->reg_result, RSP, param_offset);
-        comment_instruction(p_store, "grava o parametro %d da função", (param_offset - 16) / 4 + 1);
-        param_lst = instr_lst_join(2, param_lst, p_store);
-        param_offset += 4;
-        p = p->next;
+    instruction_entry_t *param_lst = NULL;
+
+    if (params != NULL) {
+        int param_offset = 16;
+        param_lst = params->code;
+        node *p = params;
+        while (p != NULL) {
+            instruction_entry_t *p_store = generate_instructionS("storeAI", p->reg_result, RSP, param_offset);
+            comment_instruction(p_store, "grava o parametro %d da função", (param_offset - 16) / 4 + 1);
+            param_lst = instr_lst_join(2, param_lst, p_store);
+            param_offset += 4;
+            p = p->next;
+        }
     }
 
     // prepara o endereço de retorno que é após essas 2 instr e do jump
@@ -601,6 +605,7 @@ instruction_entry_t *generate_label_instruction(int label) {
     instr->op3_type = OT_DISABLED;
     instr->op3 = EMPTY;
     strcpy(instr->comment, "\0");
+    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
@@ -616,6 +621,7 @@ instruction_entry_t *generate_instructionB(int reg, int label1, int label2) {
     instr->op3_type = OT_LABEL;
     instr->op3 = label2;
     strcpy(instr->comment, "\0");
+    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
@@ -631,6 +637,7 @@ instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int re
     instr->op3_type = OT_REG;
     instr->op3 = reg3;
     strcpy(instr->comment, "\0");
+    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
@@ -646,6 +653,7 @@ instruction_entry_t *generate_instructionI(char *code, int reg1, int value, int 
     instr->op3_type = OT_REG;
     instr->op3 = reg3;
     strcpy(instr->comment, "\0");
+    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
@@ -661,6 +669,7 @@ instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int 
     instr->op3_type = OT_IMED;
     instr->op3 = reg3;
     strcpy(instr->comment, "\0");
+    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
@@ -676,6 +685,7 @@ instruction_entry_t *generate_jump(int reg) {
     instr->op3_type = OT_DISABLED;
     instr->op3 = EMPTY;
     strcpy(instr->comment, "\0");
+    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
@@ -691,10 +701,11 @@ instruction_entry_t *generate_jumpI(int label) {
     instr->op3_type = OT_DISABLED;
     instr->op3 = EMPTY;
     strcpy(instr->comment, "\0");
+    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
-instruction_entry_t *generate_mark(int type, int p1, int p2) {
+instruction_entry_t *generate_mark(int type, int p1, int p2, char *param) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
     strcpy(instr->code, "jumpI");
     instr->lazy = 0;
@@ -706,6 +717,7 @@ instruction_entry_t *generate_mark(int type, int p1, int p2) {
     instr->op3_type = OT_MARK;
     instr->op3 = p2;
     strcpy(instr->comment, "\0");
+    strcpy(instr->mark_property, param);
     return instr_lst_create_new(instr);
 }
 

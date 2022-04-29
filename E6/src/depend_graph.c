@@ -111,10 +111,14 @@ graph_t *generate_depend_graph(instruction_entry_t *code) {
     while (current_instr != NULL) {
         for (int i = 0; i < size; i++) {
             var_live current_live = live_lst[i];
-            if (instr_lst_contain(current_live.start->next, current_live.end, current_instr->entry) == 1) {
+            if (current_live.start != NULL && 
+                    instr_lst_contain(current_live.start->next, current_live.end, current_instr->entry) == 1) 
+            {
                 for (int j = 0; j <= i; j++) {
                     var_live other_live = live_lst[j];
-                    if (instr_lst_contain(other_live.start->next, other_live.end, current_instr->entry) == 1) {
+                    if (other_live.start != NULL && 
+                            instr_lst_contain(other_live.start->next, other_live.end, current_instr->entry) == 1) 
+                    {
                         graph[i][j] = 1;
                     }
                 }

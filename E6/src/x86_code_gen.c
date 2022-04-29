@@ -13,6 +13,7 @@ Grupo: V
 #include "arch_code_gen.h"
 #include "semantic.h"
 #include "types.h"
+#include "hashmap.h"
 
 // Special ILOC regs definition
 #include "code_gen.h"
@@ -89,20 +90,7 @@ int print_assembly_instruction(instruction_entry_t *instruction_lst) {
     return 1;
 }
 
-void print_fun_header(hashmap_entry_t *fun_entry) {
-//  .globl	main
-// 	.type	main, @function
-// main:
-// .LFB0:
-// 	.cfi_startproc
-// 	endbr64
-// 	pushq	%rbp
-// 	.cfi_def_cfa_offset 16
-// 	.cfi_offset 6, -16
-// 	movq	%rsp, %rbp
-// 	.cfi_def_cfa_register 6
-
-    char *fun_name = fun_entry->key;
+void print_fun_header(hashmap_value_t *fun_value, char *fun_name) {
     printf("\t.globl\t%s\n", fun_name);
     printf("\t.type\t%s, @function\n", fun_name);
     printf("%s:\n", fun_name);
@@ -114,12 +102,19 @@ void print_fun_header(hashmap_entry_t *fun_entry) {
     printf("\t.cfi_offset 6, -16\n");
     printf("\tmovq\t%%rsp, %%rbp\n");
     printf("\t.cfi_def_cfa_register 6\n");
+    // TODO: deslocar o rsp para a quantidade de valores da pilha: subq	$16, %rsp
+}
+
+void print_fun_footer(hashmap_value_t *fun_value, char *fun_name) {
+    printf(".LFE0:\n");
+    printf("\t.size\t%s, .-%s\n", fun_name, fun_name);
 }
 
 // Marcações são usadas no código iloc e são invisíveis,
 // mas servem para transmitir um pouco mais de semantica e 
 // contexto do que as instruções
 int print_mark_instruction(instruction_entry_t *instruction_lst) {
+    hashmap_t *global_scope = current_scope();
     instruction_t *instruction = instruction_lst->entry;
 
     if (instruction->op1_type != OT_MARK) {
@@ -127,20 +122,25 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
     }
     int mark_type = instruction->op1;
     if (mark_type == CODE_MARK_FUN_START) {
-        instruction_t *label_inst = instruction_lst->next->entry;
-        if (label_inst == NULL || label_inst->op1_type != OT_LABEL) {
-            exit(EXIT_FAILURE);
-        }
-        int label = label_inst->op1;
-        hashmap_entry_t *fun_entry = find_function_by_label(label);
+        char *fun_name = instruction->mark_property;
+        hashmap_value_t *fun_entry = hashmap_get(global_scope, fun_name);
         if (fun_entry != NULL) {
-            print_fun_header(fun_entry);
+            print_fun_header(fun_entry, fun_name);
         }
         return 4;
+    } else if (mark_type == CODE_MARK_FUN_END) {
+        char *fun_name = instruction->mark_property;
+        hashmap_value_t *fun_entry = hashmap_get(global_scope, fun_name);
+        if (fun_entry != NULL) {
+            print_fun_footer(fun_entry, fun_name);
+        }
+        return 1;
     }
     return 0;
 }
 
+// ultimo caso, quando não deu pra converter a instrução nos 
+// mostramos isso, REMOVER ANTES DE ENTREGAR
 int print_conver_fail(instruction_entry_t *instruction_lst) {
     printf(" -----------> Não rolou de imprimir: ");
     print_instruction(instruction_lst->entry);

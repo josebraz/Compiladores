@@ -23,6 +23,7 @@ enum op_type {
 typedef struct __instruction {
     char code[10];
     char comment[100];
+    char mark_property[100]; // Para guardar informações adicionais da marcação
     int lazy; // indica se pode ser colocar na lista de instruções depois
     int reg_result;
     enum op_type op1_type;
