@@ -17,6 +17,8 @@ Grupo: V
 #include "code_gen.h"
 
 #define REG_NUM 16
+#define REG_EFE 11 // registrador usado para os calculos intermediários
+
 
 /*
 Special x86_64 regs ref: https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
@@ -40,147 +42,168 @@ void print_x86_64_assembly_code(instruction_entry_t *instruction_list) {
     }
 }
 
-void print_assembly_instruction(instruction_t *instruction) {
-    print_label(instruction);
-    print_store(instruction);
-    print_add(instruction);
+int print_conver_fail(instruction_t *instruction) {
+    if (instruction->op1_type == OT_MARK) {
+        // marcações não precisa imprimir
+        return 1;
+    }
+    printf(" -----------> Não rolou de imprimir: ");
+    print_instruction(instruction);
+    return 1;
 }
 
-void print_label(instruction_t *instruction) {
+void print_assembly_instruction(instruction_t *instruction) {
+    print_label(instruction) ||
+        print_general_instruction(instruction) ||
+        print_mem_instruction(instruction) || 
+        print_conver_fail(instruction);
+}
+
+int print_label(instruction_t *instruction) {
     if (instruction->op1_type == OT_LABEL) {
         printf("L%d:\n", instruction->op1);
+        return 1;
     }
+    return 0;
 }
 
-void print_store(instruction_t *instruction) {
-    if (strncmp(instruction->code, "store", 5) == 0) {
-        printf("mov ");
-        print_instruction_parameter((int)instruction->op1, instruction->op1_type);
-        printf(",");
-        print_instruction_parameter(instruction->op2, instruction->op2_type);
-        printf("\n");
-    }
+int print_mem_instruction(instruction_t *instruction) {
+    char *asm_op1[10], asm_op2[10], asm_op3[10];
+
+    print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+    print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
+    print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op3);
+    
+    if (strcmp(instruction->code, "load") == 0) {
+        printf("movl\t(%s), %s\n", asm_op2, asm_op3);
+        return 1;
+    } else if (strcmp(instruction->code, "loadAI") == 0) {
+        printf("movl\t%d(%s), %s\n", instruction->op2, asm_op1, asm_op3);
+        return 1;
+    } else if (strcmp(instruction->code, "loadI") == 0) {
+        printf("movl\t%s, %s\n", asm_op2, asm_op3);
+        return 1;
+    } else if (strcmp(instruction->code, "i2i") == 0) {
+        printf("movl\t%s, %s\n", asm_op2, asm_op3);
+        return 1;
+    } else if (strcmp(instruction->code, "store") == 0) {
+        printf("movl\t%s, (%s)\n", asm_op2, asm_op3);
+        return 1;
+    } else if (strcmp(instruction->code, "storeAI") == 0) {
+        printf("movl\t%s, %d(%s)\n", asm_op1, instruction->op3, asm_op2);
+        return 1;
+    } 
+
+    return 0;
 }
 
-void print_storeAI(instruction_t *instruction) {
-    // storeAI: r0 => rfp, 12 // Memoria(rfp + 12) = r0
-    if (strncmp(instruction->code, "storeAI", 7) == 0) {
-        // add the immediate address
-        // need to have the add address on some register than mov it to the store register...
-        printf("add");
-        print_instruction_parameter(instruction->op1, instruction->op1_type);
-        printf(",");
-        print_instruction_parameter(instruction->op2, instruction->op2_type);
-
-        printf("\n");
-
-        // print move
-        printf("mov ");
-        print_instruction_parameter(instruction->op1, instruction->op1_type);
-        printf(",");
-        print_instruction_parameter(instruction->op2, instruction->op2_type);
-
-        printf("\n");
-    }
-    // storeAI: r0 => rfp, 12 // Memoria(rfp + 12) = r0
-    // storeai
-    // Como traduzir isso para MOV?
-    // store normal: Memoria(r2) = r1
-
-    // add rfp, 12
-    // mov rfp, r0
-}
-
-void print_instruction_parameter(int op, int op_type) {
-    if (op_type == OT_IMED)
-        printf(" $%d", op);
-    else {
-        char register_name[10];
-        get_x86_64_assembly_register_name(op, register_name);
-        printf(" %%%s", register_name);
-    }
-}
-
-void print_add(instruction_t *instruction) {
+int print_general_instruction(instruction_t *instruction) {
+    char asm_code[10], asm_op1[10], asm_op2[10];
     if (strncmp(instruction->code, "add", 3) == 0) {
-        // add r1, r2 => r3 // r3 = r1 + r2
+        strcpy(asm_code, "addl");
+    } else if (strncmp(instruction->code, "sub", 3) == 0) {
+        strcpy(asm_code, "subl");
+    } else if (strncmp(instruction->code, "mult", 4) == 0) {
+        strcpy(asm_code, "imultl");
+    } else if (strncmp(instruction->code, "div", 3) == 0) {
+        strcpy(asm_code, "idivl");
+    } else if (strncmp(instruction->code, "and", 3) == 0) {
+        strcpy(asm_code, "and");
+    } else if (strncmp(instruction->code, "or", 2) == 0) {
+        strcpy(asm_code, "or");
+    } else if (strncmp(instruction->code, "xor", 3) == 0) {
+        strcpy(asm_code, "xor");
+    } else {
+        // não conhecemos essa instrução como sendo um instrução
+        // geral, deve ser outra coisa, então vamos sair...
+        return 0;
+    }
 
-        // add r1, r2 // r1 = source, destiny = r2
-        printf("add");
-        print_instruction_parameter(instruction->op1, instruction->op1_type);
-        printf(" ,");
-        print_instruction_parameter(instruction->op2, instruction->op2_type);
+    if (instruction->op2 == instruction->op3) {
+        // Nesse caso a instrução não tá colocando no segundo operando
+        // a conversão se torna bem mais fácil porque é 1:1
+        print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+        print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
 
-        printf("\n");
+        printf("%s\t%s, %s\n", asm_code, asm_op1, asm_op2);
+        
+        return 1;
+    } else {
+        // Esse é um caso mais chato, precisamos gravar o resultado o operando 1 em um
+        // registrador intermediário, usar ele para o cálculo com o operando 2 
+        // e depois mover para o operando 3 (destino correto)
+        print_instruction_parameter(REG_EFE, OT_REG, asm_op2);
 
-        // add r2, r3 // r2 = source, destiny = r3
-        printf("add");
-        print_instruction_parameter(instruction->op2, instruction->op2_type);
-        printf(" ,");
-        print_instruction_parameter(instruction->op3, instruction->op3_type);
+        print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op1);
+        printf("movl\t%s, %s\n", asm_op1, asm_op2);
 
-        printf("\n");
+        print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+        printf("%s\t%s, %s\n", asm_code, asm_op1, asm_op2);
+
+        print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op1);
+        printf("movl\t%s, %s\n", asm_op2, asm_op1);
+
+        return 1;
     }
 }
 
-/**
- * @brief Get the x86 64 assembly register name object 
- * There are 12 registers to use, 4 of them are the special registers on this file header
- * @param reg 
- * @param dest 
- */
-void get_x86_64_assembly_register_name(int reg, char *dest) {
-    switch (reg) {
+
+void print_instruction_parameter(int op, int op_type, char *dest) {
+    if (op_type == OT_IMED)
+        sprintf(dest, "$%d", op);
+    else {
+        switch (op) {
         case RBSS:
-            strcpy(dest, "rbss");
+            strcpy(dest, "%rbss");
             break;
         case RSP:
-            strcpy(dest, "rsp");
+            strcpy(dest, "%rsp");
             break;
         case RFP:
-            strcpy(dest, "rbp");
+            strcpy(dest, "%rbp");
             break;
         case RPC:
-            strcpy(dest, "rip");
+            strcpy(dest, "%rip");
             break;
         case 0:
-            strcpy(dest, "rax");
+            strcpy(dest, "%rax");
             break;
         case 1:
-            strcpy(dest, "rbx");
+            strcpy(dest, "%rbx");
             break;
         case 2:
-            strcpy(dest, "rcx");
+            strcpy(dest, "%rcx");
             break;
         case 3:
-            strcpy(dest, "rdx");
+            strcpy(dest, "%rdx");
             break;
         case 4:
-            strcpy(dest, "r8");
+            strcpy(dest, "%r8");
             break;
         case 5:
-            strcpy(dest, "r9");
+            strcpy(dest, "%r9");
             break;
         case 6:
-            strcpy(dest, "r10");
+            strcpy(dest, "%r10");
             break;
         case 7:
-            strcpy(dest, "r11");
+            strcpy(dest, "%r11");
             break;
         case 8:
-            strcpy(dest, "r12");
+            strcpy(dest, "%r12");
             break;
         case 9:
-            strcpy(dest, "r13");
+            strcpy(dest, "%r13");
             break;
         case 10:
-            strcpy(dest, "r14");
+            strcpy(dest, "%r14");
             break;
         case 11:
-            strcpy(dest, "r15");
+            strcpy(dest, "%r15");
             break;
         default:
             break;
+        }
     }
 }
 
