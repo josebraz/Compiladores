@@ -1,0 +1,62 @@
+ORIGINAL
+// MARK: INIT CODE START, p1 = 0, p2 = 0
+loadI 1024 => rfp
+loadI 1024 => rsp
+loadI 15 => rbss
+L0:
+// MARK: INIT CODE END, p1 = 0, p2 = 0
+L0:                           // Declaração da função main
+// MARK: FUN START, p1 = 0, p2 = 0
+i2i rsp => rfp
+addI rsp, 24 => rsp
+// MARK: SAVE REGS START, p1 = 0, p2 = 0// Salva o estado dos registradores usados na função
+storeAI r0 => rfp, 16
+storeAI r1 => rfp, 20
+// MARK: SAVE REGS END, p1 = 0, p2 = 0
+loadI 123 => r0
+storeAI r0 => rbss, 0         // Grava variável i
+loadI 0 => r1                 // Início do retorno
+storeAI r1 => rfp, 12         // Escreve o valor de retorno na pilha
+halt                          // Termina o programa
+// MARK: FUN END, p1 = 0, p2 = 0
+REMOVE MARKS
+L0:                           // Declaração da função main
+// MARK: FUN START, p1 = 0, p2 = 0
+i2i rsp => rfp
+addI rsp, 24 => rsp
+loadI 123 => r0
+storeAI r0 => rbss, 0         // Grava variável i
+loadI 0 => r1                 // Início do retorno
+storeAI r1 => rfp, 12         // Escreve o valor de retorno na pilha
+halt                          // Termina o programa
+// MARK: FUN END, p1 = 0, p2 = 0
+	 0	1	
+0	[1	]
+1	[0	1	]
+CORES:
+0 - 0
+1 - 0
+
+OPTIMIZE REGS
+L0:                           // Declaração da função main
+// MARK: FUN START, p1 = 0, p2 = 0
+i2i rsp => rfp
+addI rsp, 24 => rsp
+loadI 123 => r0
+storeAI r0 => rbss, 0         // Grava variável i
+loadI 0 => r0                 // Início do retorno
+storeAI r0 => rfp, 12         // Escreve o valor de retorno na pilha
+halt                          // Termina o programa
+// MARK: FUN END, p1 = 0, p2 = 0
+
+Assembly:
+L0:
+movl	$-5000, %rbp
+movl	$24, %r15
+addl	%rsp, %r15
+movl	%r15, %rsp
+movl	$123, %rax
+movl	%rax, 0(%rbss)
+movl	$0, %rax
+movl	%rax, 12(%rbp)
+ -----------> Não rolou de imprimir: halt                          // Termina o programa

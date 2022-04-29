@@ -3,5 +3,6 @@ int i;
 int main()
 {
   i = 123;
+  i << 3;
   return 0;
 }

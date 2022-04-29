@@ -92,7 +92,7 @@ int print_mem_instruction(instruction_t *instruction) {
     } else if (strcmp(instruction->code, "storeAI") == 0) {
         printf("movl\t%s, %d(%s)\n", asm_op1, instruction->op3, asm_op2);
         return 1;
-    } 
+    }
 
     return 0;
 }
@@ -113,6 +113,14 @@ int print_general_instruction(instruction_t *instruction) {
         strcpy(asm_code, "or");
     } else if (strncmp(instruction->code, "xor", 3) == 0) {
         strcpy(asm_code, "xor");
+    } else if (strncmp(instruction->code, "lshift", 6) == 0) {
+        strcpy(asm_code, "sal");
+    } else if (strncmp(instruction->code, "lshiftI", 7) == 0) {
+        strcpy(asm_code, "sal");
+    } else if (strncmp(instruction->code, "rshift", 6) == 0) {
+        strcpy(asm_code, "sar");
+    } else if (strncmp(instruction->code, "rshiftI", 7) == 0) {
+        strcpy(asm_code, "sar");
     } else {
         // não conhecemos essa instrução como sendo um instrução
         // geral, deve ser outra coisa, então vamos sair...
