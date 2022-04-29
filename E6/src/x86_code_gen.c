@@ -11,6 +11,7 @@ Grupo: V
 #include <stdarg.h>
 
 #include "arch_code_gen.h"
+#include "semantic.h"
 #include "types.h"
 
 // Special ILOC regs definition
@@ -29,8 +30,34 @@ rsi - register source index (source for data copies)
 rdi - register destination index (destination for data copies)
 */
 
+int print_conver_fail(instruction_entry_t *instruction_lst);
+
+void print_global_var() {
+    stack_entry_t * global_scope = current_scope();
+
+    if (global_scope != NULL) {
+        // não não temos inicialização de variável global
+        // vai ser apenas declarar seus nomes e tamanho
+        int fold = 0;
+        int index = 0;
+        while (fold < global_scope->size) {
+            hashmap_entry_t *entry = global_scope->values[index++];
+            if (entry != NULL) {
+                if (entry->value->nature == NT_VARIABLE) {
+                    printf("\t.comm\t%s,%d,%d\n", entry->key, 
+                        entry->value->men_size, entry->value->men_size);
+                }
+                fold++;
+            }
+        }
+    }
+}
+
 void print_x86_64_assembly_code(instruction_entry_t *instruction_list) {
     printf("\nAssembly:\n");
+
+    print_global_var();
+
     instruction_entry_t *current = instruction_list;
     while (current != NULL) {
         int processed = print_assembly_instruction(current);
@@ -40,17 +67,84 @@ void print_x86_64_assembly_code(instruction_entry_t *instruction_list) {
     }
 }
 
+int print_assembly_instruction(instruction_entry_t *instruction_lst) {
+    int temp;
+    temp = print_mark_instruction(instruction_lst);
+    if (temp > 0) {
+        return temp;
+    }
+    temp = print_label(instruction_lst);
+    if (temp > 0) {
+        return temp;
+    }
+    temp = print_general_instruction(instruction_lst);
+    if (temp > 0) {
+        return temp;
+    }
+    temp = print_mem_instruction(instruction_lst);
+    if (temp > 0) {
+        return temp;
+    }
+    temp = print_conver_fail(instruction_lst);
+    return 1;
+}
+
+void print_fun_header(hashmap_entry_t *fun_entry) {
+//  .globl	main
+// 	.type	main, @function
+// main:
+// .LFB0:
+// 	.cfi_startproc
+// 	endbr64
+// 	pushq	%rbp
+// 	.cfi_def_cfa_offset 16
+// 	.cfi_offset 6, -16
+// 	movq	%rsp, %rbp
+// 	.cfi_def_cfa_register 6
+
+    char *fun_name = fun_entry->key;
+    printf("\t.globl\t%s\n", fun_name);
+    printf("\t.type\t%s, @function\n", fun_name);
+    printf("%s:\n", fun_name);
+    printf("LFB0:\n");
+    printf("\t.cfi_startproc\n");
+    printf("\tendbr64\n");
+    printf("\tpushq\t%%rbp\n");
+    printf("\t.cfi_def_cfa_offset 16\n");
+    printf("\t.cfi_offset 6, -16\n");
+    printf("\tmovq\t%%rsp, %%rbp\n");
+    printf("\t.cfi_def_cfa_register 6\n");
+}
+
+// Marcações são usadas no código iloc e são invisíveis,
+// mas servem para transmitir um pouco mais de semantica e 
+// contexto do que as instruções
+int print_mark_instruction(instruction_entry_t *instruction_lst) {
+    instruction_t *instruction = instruction_lst->entry;
+
+    if (instruction->op1_type != OT_MARK) {
+        return 0;
+    }
+    int mark_type = instruction->op1;
+    if (mark_type == CODE_MARK_FUN_START) {
+        instruction_t *label_inst = instruction_lst->next->entry;
+        if (label_inst == NULL || label_inst->op1_type != OT_LABEL) {
+            exit(EXIT_FAILURE);
+        }
+        int label = label_inst->op1;
+        hashmap_entry_t *fun_entry = find_function_by_label(label);
+        if (fun_entry != NULL) {
+            print_fun_header(fun_entry);
+        }
+        return 4;
+    }
+    return 0;
+}
+
 int print_conver_fail(instruction_entry_t *instruction_lst) {
     printf(" -----------> Não rolou de imprimir: ");
     print_instruction(instruction_lst->entry);
     return 1;
-}
-
-int print_assembly_instruction(instruction_entry_t *instruction_lst) {
-    return print_label(instruction_lst) ||
-        print_general_instruction(instruction_lst) ||
-        print_mem_instruction(instruction_lst) || 
-        print_conver_fail(instruction_lst);
 }
 
 int print_label(instruction_entry_t *instruction_lst) {
@@ -70,22 +164,22 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
     print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op3);
     
     if (strcmp(instruction->code, "load") == 0) {
-        printf("movl\t(%s), %s\n", asm_op2, asm_op3);
+        printf("\tmovl\t(%s), %s\n", asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "loadAI") == 0) {
-        printf("movl\t%d(%s), %s\n", instruction->op2, asm_op1, asm_op3);
+        printf("\tmovl\t%d(%s), %s\n", instruction->op2, asm_op1, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "loadI") == 0) {
-        printf("movl\t%s, %s\n", asm_op2, asm_op3);
+        printf("\tmovl\t%s, %s\n", asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "i2i") == 0) {
-        printf("movl\t%s, %s\n", asm_op1, asm_op3);
+        printf("\tmovl\t%s, %s\n", asm_op1, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "store") == 0) {
-        printf("movl\t%s, (%s)\n", asm_op2, asm_op3);
+        printf("\tmovl\t%s, (%s)\n", asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "storeAI") == 0) {
-        printf("movl\t%s, %d(%s)\n", asm_op1, instruction->op3, asm_op2);
+        printf("\tmovl\t%s, %d(%s)\n", asm_op1, instruction->op3, asm_op2);
         return 1;
     }
 
@@ -133,7 +227,7 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
         print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
         print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
 
-        printf("%s\t%s, %s\n", asm_code, asm_op1, asm_op2);
+        printf("\t%s\t%s, %s\n", asm_code, asm_op1, asm_op2);
         
         return 1;
     } else if (instruction->op1 == instruction->op3 && is_comutative == 1) {
@@ -142,7 +236,7 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
         print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
         print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
 
-        printf("%s\t%s, %s\n", asm_code, asm_op2, asm_op1);
+        printf("\t%s\t%s, %s\n", asm_code, asm_op2, asm_op1);
     
         return 1;
     } else {
@@ -152,13 +246,13 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
         print_instruction_parameter(REG_EFE, OT_REG, asm_op2);
 
         print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op1);
-        printf("movl\t%s, %s\n", asm_op1, asm_op2);
+        printf("\tmovl\t%s, %s\n", asm_op1, asm_op2);
 
         print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
-        printf("%s\t%s, %s\n", asm_code, asm_op1, asm_op2);
+        printf("\t%s\t%s, %s\n", asm_code, asm_op1, asm_op2);
 
         print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op1);
-        printf("movl\t%s, %s\n", asm_op2, asm_op1);
+        printf("\tmovl\t%s, %s\n", asm_op2, asm_op1);
 
         return 1;
     }

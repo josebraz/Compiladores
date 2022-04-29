@@ -251,7 +251,7 @@ void generate_fun_decl(node *fun) {
         instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START, 0, 0);
         instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END, 0, 0);
 
-        fun->code = instr_lst_join(7, instr_fun_label, start_fun_mark, update_rfp, 
+        fun->code = instr_lst_join(7, start_fun_mark, instr_fun_label, update_rfp, 
                                         update_rsp, store_used_reg, 
                                         fun->nodes[0]->code, end_fun_mark);
 

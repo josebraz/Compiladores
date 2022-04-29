@@ -23,6 +23,8 @@ int print_general_instruction(instruction_entry_t *instruction_lst);
 
 int print_mem_instruction(instruction_entry_t *instruction_lst);
 
+int print_mark_instruction(instruction_entry_t *instruction_lst);
+
 void print_instruction_parameter(int op, int op_type, char *output);
 
 

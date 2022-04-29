@@ -515,6 +515,20 @@ void hashmap_print(hashmap_t *map) {
     printf("# }\n");
 }
 
+hashmap_entry_t *find_function_by_label(int label) {
+    hashmap_t *global = scope_stack->entries[0];
+    if (global != NULL) {
+        int index = 0;
+        while (index < global->actual_capacity) {
+            hashmap_entry_t *entry = global->values[index++];
+            if (entry != NULL && entry->value->fun_label == label) {
+                return entry;
+            }
+        }
+    }
+    return NULL;
+}
+
 void print_stack() {
     if (scope_stack != NULL) {
         for (int i = 0; i <= scope_stack->index; i++) {

@@ -255,4 +255,8 @@ enum data_type infer_expression_type(node *root);
 
 void print_stack();
 
+void hashmap_print(hashmap_t *map);
+
+hashmap_entry_t *find_function_by_label(int label);
+
 #endif
