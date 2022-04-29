@@ -31,44 +31,39 @@ rdi - register destination index (destination for data copies)
 
 void print_x86_64_assembly_code(instruction_entry_t *instruction_list) {
     printf("\nAssembly:\n");
-    while (instruction_list != NULL) {
-        instruction_t *current_instruction = instruction_list->entry;
+    instruction_entry_t *current = instruction_list;
+    while (current != NULL) {
+        int processed = print_assembly_instruction(current);
 
-        if (instruction_list->entry != NULL) {
-            print_assembly_instruction(current_instruction);
-        }
-
-        instruction_list = instruction_list->next;
+        for (int i = 0; i < processed; i++)
+            current = current->next;
     }
 }
 
-int print_conver_fail(instruction_t *instruction) {
-    if (instruction->op1_type == OT_MARK) {
-        // marcações não precisa imprimir
-        return 1;
-    }
+int print_conver_fail(instruction_entry_t *instruction_lst) {
     printf(" -----------> Não rolou de imprimir: ");
-    print_instruction(instruction);
+    print_instruction(instruction_lst->entry);
     return 1;
 }
 
-void print_assembly_instruction(instruction_t *instruction) {
-    print_label(instruction) ||
-        print_general_instruction(instruction) ||
-        print_mem_instruction(instruction) || 
-        print_conver_fail(instruction);
+int print_assembly_instruction(instruction_entry_t *instruction_lst) {
+    return print_label(instruction_lst) ||
+        print_general_instruction(instruction_lst) ||
+        print_mem_instruction(instruction_lst) || 
+        print_conver_fail(instruction_lst);
 }
 
-int print_label(instruction_t *instruction) {
-    if (instruction->op1_type == OT_LABEL) {
-        printf("L%d:\n", instruction->op1);
+int print_label(instruction_entry_t *instruction_lst) {
+    if (instruction_lst->entry->op1_type == OT_LABEL) {
+        printf("L%d:\n", instruction_lst->entry->op1);
         return 1;
     }
     return 0;
 }
 
-int print_mem_instruction(instruction_t *instruction) {
-    char *asm_op1[10], asm_op2[10], asm_op3[10];
+int print_mem_instruction(instruction_entry_t *instruction_lst) {
+    instruction_t *instruction = instruction_lst->entry;
+    char asm_op1[10], asm_op2[10], asm_op3[10];
 
     print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
     print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
@@ -84,7 +79,7 @@ int print_mem_instruction(instruction_t *instruction) {
         printf("movl\t%s, %s\n", asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "i2i") == 0) {
-        printf("movl\t%s, %s\n", asm_op2, asm_op3);
+        printf("movl\t%s, %s\n", asm_op1, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "store") == 0) {
         printf("movl\t%s, (%s)\n", asm_op2, asm_op3);
@@ -97,30 +92,35 @@ int print_mem_instruction(instruction_t *instruction) {
     return 0;
 }
 
-int print_general_instruction(instruction_t *instruction) {
+int print_general_instruction(instruction_entry_t *instruction_lst) {
+    instruction_t *instruction = instruction_lst->entry;
+
     char asm_code[10], asm_op1[10], asm_op2[10];
+    int is_comutative = 0;
+
     if (strncmp(instruction->code, "add", 3) == 0) {
         strcpy(asm_code, "addl");
+        is_comutative = 1;
     } else if (strncmp(instruction->code, "sub", 3) == 0) {
         strcpy(asm_code, "subl");
     } else if (strncmp(instruction->code, "mult", 4) == 0) {
         strcpy(asm_code, "imultl");
+        is_comutative = 1;
     } else if (strncmp(instruction->code, "div", 3) == 0) {
         strcpy(asm_code, "idivl");
     } else if (strncmp(instruction->code, "and", 3) == 0) {
-        strcpy(asm_code, "and");
+        strcpy(asm_code, "andl");
+        is_comutative = 1;
     } else if (strncmp(instruction->code, "or", 2) == 0) {
-        strcpy(asm_code, "or");
+        strcpy(asm_code, "orl");
+        is_comutative = 1;
     } else if (strncmp(instruction->code, "xor", 3) == 0) {
-        strcpy(asm_code, "xor");
+        strcpy(asm_code, "xorl");
+        is_comutative = 1;
     } else if (strncmp(instruction->code, "lshift", 6) == 0) {
-        strcpy(asm_code, "sal");
-    } else if (strncmp(instruction->code, "lshiftI", 7) == 0) {
-        strcpy(asm_code, "sal");
+        strcpy(asm_code, "sall");
     } else if (strncmp(instruction->code, "rshift", 6) == 0) {
-        strcpy(asm_code, "sar");
-    } else if (strncmp(instruction->code, "rshiftI", 7) == 0) {
-        strcpy(asm_code, "sar");
+        strcpy(asm_code, "sarl");
     } else {
         // não conhecemos essa instrução como sendo um instrução
         // geral, deve ser outra coisa, então vamos sair...
@@ -135,6 +135,15 @@ int print_general_instruction(instruction_t *instruction) {
 
         printf("%s\t%s, %s\n", asm_code, asm_op1, asm_op2);
         
+        return 1;
+    } else if (instruction->op1 == instruction->op3 && is_comutative == 1) {
+        // essas operações não importa a ordem, então da pra executar
+        // em uma instrução apenas
+        print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+        print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
+
+        printf("%s\t%s, %s\n", asm_code, asm_op2, asm_op1);
+    
         return 1;
     } else {
         // Esse é um caso mais chato, precisamos gravar o resultado o operando 1 em um
