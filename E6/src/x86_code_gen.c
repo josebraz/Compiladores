@@ -14,6 +14,7 @@ Grupo: V
 #include "semantic.h"
 #include "types.h"
 #include "hashmap.h"
+#include "instr_lst.h"
 
 // Special ILOC regs definition
 #include "code_gen.h"
@@ -170,6 +171,35 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         printf("\tmovl\t-%d(%s), %s\n", instruction->op2, asm_op1, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "loadI") == 0) {
+        int imediate_value = instruction->op2;
+        instruction_t *next = instruction_lst->next->entry;
+        if (next != NULL && ((next->op1 == instruction->reg_result && next->op1_type == OT_REG) || 
+            (next->op2 == instruction->reg_result && next->op2_type == OT_REG))) 
+        {
+            // foi feito um loadI para usar o valor direto na 
+            // próxima instrução, vamos tentar converter a próxima
+            // usando esse valor imediato
+            instruction_t *next_copy = (instruction_t*) malloc(sizeof(instruction_t));
+            *next_copy = *next;
+            if (next->op1 == instruction->reg_result) {
+                next_copy->op1_type = OT_IMED;
+                next_copy->op1 = imediate_value;
+            } else {
+                next_copy->op2_type = OT_IMED;
+                next_copy->op2 = imediate_value;
+            }
+            instruction_entry_t *next_copy_lst = instr_lst_create_new(next_copy);
+
+            int result = print_general_instruction(next_copy_lst);
+            free(next_copy);
+            free(next_copy_lst);
+
+            if (result >= 1) {
+                // conseguimos converter a próxima, não precisamos converter
+                // esse loadI já que em asm isso é uma instrução apenas, então pulamos (+1)
+                return result + 1;
+            }
+        }
         printf("\tmovl\t%s, %s\n", asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "i2i") == 0) {
@@ -185,6 +215,8 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
 
     return 0;
 }
+
+
 
 int print_general_instruction(instruction_entry_t *instruction_lst) {
     instruction_t *instruction = instruction_lst->entry;
@@ -336,6 +368,10 @@ instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *instructi
 
         if (current_instruction->op3_type == OT_REG && current_instruction->op3 >= 0)
             current_instruction->op3 = node_colors[current_instruction->op3];
+        
+        if (current_instruction->reg_result >= 0) {
+            current_instruction->reg_result = node_colors[current_instruction->reg_result];
+        }
 
         instruction_list_copy = instruction_list_copy->next;
     }

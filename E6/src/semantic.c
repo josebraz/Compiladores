@@ -104,6 +104,14 @@ stack_entry_t *current_scope() {
     return stack_peek(scope_stack);
 }
 
+stack_entry_t *global_scope() {
+    return scope_stack->entries[0];
+}
+
+stack_entry_t *function_scope() {
+    return scope_stack->entries[1];
+}
+
 void free_scopes() {
     for (int i = 0; i < scope_stack->actual_capacity; i++) {
         hashmap_destroy(scope_stack->entries[i]);

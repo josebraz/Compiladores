@@ -20,6 +20,10 @@ void semantic_init();
 
 stack_entry_t *current_scope();
 
+stack_entry_t *global_scope();
+
+stack_entry_t *function_scope();
+
 void free_scopes();
 
 /**

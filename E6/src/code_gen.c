@@ -136,30 +136,32 @@ void generate_var_assignment(char *ident, node *b, node *init) {
 }
 
 void generate_fun_return(node *s, node *e) {
-    hashmap_t *function_scope = current_scope();
+    hashmap_t *fun_scope = function_scope();
 
     instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, 12);
 
     comment_instruction(e->code, "Início do retorno");
     comment_instruction(store_result, "Escreve o valor de retorno na pilha");
 
-    if (strcmp(function_scope->label, "main") == 0) {
+    instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0, fun_scope->label);
+    instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0, fun_scope->label);
+
+    if (strcmp(fun_scope->label, "main") == 0) {
         instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
         comment_instruction(instr_halt, "Termina o programa");
-        s->code = instr_lst_join(3, e->code, store_result, instr_halt);
+        s->code = instr_lst_join(5, ret_start_mark, e->code, 
+                                    store_result, instr_halt, ret_end_mark);
     } else {
         int rsp_reg = next_reg();
         int rfp_reg = next_reg();
         int ret_reg = next_reg();
 
-        instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0, "");
         instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, rsp_reg);
         instruction_entry_t *copy_rsp = generate_instructionI("i2i", rsp_reg, EMPTY, RSP);
         instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, rfp_reg);
         instruction_entry_t *copy_rfp = generate_instructionI("i2i", rfp_reg, EMPTY, RFP);
         instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, ret_reg);
         instruction_entry_t *jump_ret = generate_jump(ret_reg);
-        instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0, "");
 
         comment_instruction(load_ret_end, "Carrega end de retorno");
         comment_instruction(load_last_rsp, "Carrega ultimo RSP");
