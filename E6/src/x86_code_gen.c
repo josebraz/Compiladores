@@ -167,7 +167,7 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         printf("\tmovl\t(%s), %s\n", asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "loadAI") == 0) {
-        printf("\tmovl\t%d(%s), %s\n", instruction->op2, asm_op1, asm_op3);
+        printf("\tmovl\t-%d(%s), %s\n", instruction->op2, asm_op1, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "loadI") == 0) {
         printf("\tmovl\t%s, %s\n", asm_op2, asm_op3);
@@ -179,7 +179,7 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         printf("\tmovl\t%s, (%s)\n", asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "storeAI") == 0) {
-        printf("\tmovl\t%s, %d(%s)\n", asm_op1, instruction->op3, asm_op2);
+        printf("\tmovl\t%s, -%d(%s)\n", asm_op1, instruction->op3, asm_op2);
         return 1;
     }
 
