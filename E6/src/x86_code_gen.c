@@ -69,6 +69,12 @@ void print_x86_64_assembly_code(instruction_entry_t *instruction_list) {
     }
 }
 
+/**
+ * @brief 
+ * 
+ * @param instruction_lst 
+ * @return int Quantas instr. do iloc pode pular
+ */
 int print_assembly_instruction(instruction_entry_t *instruction_lst) {
     int temp;
     temp = print_mark_instruction(instruction_lst);
@@ -121,13 +127,17 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
     if (instruction->op1_type != OT_MARK) {
         return 0;
     }
+
     int mark_type = instruction->op1;
+
     if (mark_type == CODE_MARK_FUN_START) {
         char *fun_name = instruction->mark_property;
         hashmap_value_t *fun_entry = hashmap_get(global_scope, fun_name);
+
         if (fun_entry != NULL) {
             print_fun_header(fun_entry, fun_name);
         }
+
         return 4;
     } else if (mark_type == CODE_MARK_FUN_END) {
         char *fun_name = instruction->mark_property;
@@ -143,7 +153,17 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         char *fun_name = instruction->mark_property;
         printf("\tcall\t%s\n", fun_name);
         return 4; // marcação + add rpc + store ret + jump
+    } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE) {
+        // sempre é storeAI
+        instruction_t* return_value_instruction = instruction_lst->next->entry;
+        // storeAI r13 => rfp, 12        // Escreve o valor de retorno na pilha
+        char reg_name[10];
+        print_instruction_parameter(return_value_instruction->op1, return_value_instruction->op1_type, reg_name);
+        printf("\tmovl\t%s, %%eax\n", reg_name);
+        printf("\tleave\n\t.cfi_def_cfa 7, 8 \n\tret\n\t.cfi_endproc\n");
+        return 4; 
     }
+
     return 0;
 }
 

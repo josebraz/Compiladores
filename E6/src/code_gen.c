@@ -149,7 +149,8 @@ void generate_fun_return(node *s, node *e) {
     if (strcmp(fun_scope->label, "main") == 0) {
         instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
         comment_instruction(instr_halt, "Termina o programa");
-        s->code = instr_lst_join(5, ret_start_mark, e->code, 
+        instruction_entry_t *fun_return_value_mark = generate_mark(CODE_MARK_FUN_RETURN_VALUE, 0, 0, fun_scope->label);
+        s->code = instr_lst_join(6, ret_start_mark, e->code, fun_return_value_mark,
                                     store_result, instr_halt, ret_end_mark);
     } else {
         int rsp_reg = next_reg();
@@ -491,43 +492,46 @@ int print_mark(instruction_t *inst) {
     switch (inst->op1)
     {
     case CODE_MARK_FUN_START:
-        char_counter += printf("FUN START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_FUN_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_END:
-        char_counter += printf("FUN END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_FUN_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_SAVE_REGS_START:
-        char_counter += printf("SAVE REGS START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_SAVE_REGS_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_SAVE_REGS_END:
-        char_counter += printf("SAVE REGS END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_SAVE_REGS_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_LOAD_REGS_START:
-        char_counter += printf("LOAD REGS START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_LOAD_REGS_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_LOAD_REGS_END:
-        char_counter += printf("LOAD REGS END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_LOAD_REGS_END p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_INIT_CODE_START:
-        char_counter += printf("INIT CODE START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_INIT_CODE_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_INIT_CODE_END:
-        char_counter += printf("INIT CODE END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_INIT_CODE_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_CALL_START:
-        char_counter += printf("FUN CALL START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_FUN_CALL_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_CALL_END:
-        char_counter += printf("FUN CALL END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_FUN_CALL_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_CALL_JUMP:
         char_counter += printf("FUN CALL JUMP, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_RET_START:
-        char_counter += printf("FUN RET START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_FUN_RET_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_RET_END:
-        char_counter += printf("FUN RET END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_FUN_RET_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_FUN_RETURN_VALUE:
+        char_counter += printf("CODE_MARK_FUN_RETURN_VALUE, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     default:
         break;
