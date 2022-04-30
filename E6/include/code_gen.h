@@ -88,6 +88,8 @@ instruction_entry_t *generate_label_instruction(int label);
 
 instruction_entry_t *generate_mark(int type, int p1, int p2, char *param);
 
+instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *code);
+
 void comment_instruction(instruction_entry_t *entry, char *message, ...);
 
 void get_var_mem_loc(char *ident, int *reg, int *offset);

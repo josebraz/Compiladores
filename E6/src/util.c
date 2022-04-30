@@ -89,43 +89,19 @@ void generate_dot(void *arvore) {
 extern void exporta(void *arvore) {
     if (arvore != NULL) {
         instruction_entry_t *code = ((node*) arvore)->code;
-        printf("ORIGINAL\n");
+        printf("\n ------- ILOC CODE ---------- \n");
         print_instr_lst(code);
 
-        code = instr_lst_remove_mark_interval(code, CODE_MARK_SAVE_REGS_START, CODE_MARK_SAVE_REGS_END);
-        code = instr_lst_remove_mark_interval(code, CODE_MARK_LOAD_REGS_START, CODE_MARK_LOAD_REGS_END);
+        // code = instr_lst_remove_mark_interval(code, CODE_MARK_SAVE_REGS_START, CODE_MARK_SAVE_REGS_END);
+        // code = instr_lst_remove_mark_interval(code, CODE_MARK_LOAD_REGS_START, CODE_MARK_LOAD_REGS_END);
         code = instr_lst_remove_mark_interval(code, CODE_MARK_INIT_CODE_START, CODE_MARK_INIT_CODE_END);
 
         // atualiza o ponteiro da primeira instrução do iloc porque 
         // ela pode ter mudado devido a remoção das marcações
-        ((node*) arvore)->code = code; 
+        ((node*) arvore)->code = code;
 
-        printf("REMOVE MARKS\n");
-        print_instr_lst(code);
-
-        graph_t *graph = generate_depend_graph(code);
-
-        int *node_colors;
-
-        print_graph(graph);
-
-        // tenta colorir o grafo com 3 cores primeiro e vai aumentando
-        int result = 0;
-        int colors = 2;
-        while (result == 0) {
-            colors++;
-            result = try_color_graph(colors, graph, &node_colors);
-        }
-
-        if (result == 1) {
-            print_graph_node_colors(graph, node_colors);
-            code = optimize_iloc_register_usage(code, node_colors, graph);
-
-            printf("OPTIMIZE REGS\n");
-            print_instr_lst(code);
-
-            print_x86_64_assembly_code(code);
-        }
+        printf("\n\n ------- ASSEMBLY CODE ----------\n");
+        print_x86_64_assembly_code(code);
     }
 }
 

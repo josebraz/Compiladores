@@ -56,8 +56,6 @@ void print_global_var() {
 }
 
 void print_x86_64_assembly_code(instruction_entry_t *instruction_list) {
-    printf("\nAssembly:\n");
-
     print_global_var();
 
     instruction_entry_t *current = instruction_list;
@@ -138,7 +136,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             print_fun_header(fun_entry, fun_name);
         }
 
-        return 4;
+        return 3;
     } else if (mark_type == CODE_MARK_FUN_END) {
         char *fun_name = instruction->mark_property;
         hashmap_value_t *fun_entry = hashmap_get(global_scope, fun_name);
@@ -170,7 +168,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
 // ultimo caso, quando não deu pra converter a instrução nos 
 // mostramos isso, REMOVER ANTES DE ENTREGAR
 int print_conver_fail(instruction_entry_t *instruction_lst) {
-    printf(" -----------> Não rolou de imprimir: ");
+    printf("\t##### Não rolou de imprimir: ");
     print_instruction(instruction_lst->entry);
     return 1;
 }
@@ -375,40 +373,6 @@ void print_instruction_parameter(int op, int op_type, char *dest) {
             break;
         }
     }
-}
-
-instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *instruction_list, int* node_colors, graph_t* graph) {
-    instruction_entry_t *instruction_list_copy = instruction_list;
-
-    /* loop through node_colors, whose size is the same as graph->size */
-    while (instruction_list_copy != NULL)
-    {
-        instruction_t *current_instruction = instruction_list_copy->entry;
-
-        /* Operand type is REGISTER and the index >= 0 means its a regular temp reg */
-        /* special registers are negative */
-        if (current_instruction->op1_type == OT_REG && current_instruction->op1 >= 0)
-            current_instruction->op1 = node_colors[current_instruction->op1];
-
-        if (current_instruction->op2_type == OT_REG && current_instruction->op2 >= 0)
-            current_instruction->op2 = node_colors[current_instruction->op2];
-
-        if (current_instruction->op3_type == OT_REG && current_instruction->op3 >= 0)
-            current_instruction->op3 = node_colors[current_instruction->op3];
-        
-        if (current_instruction->reg_result >= 0) {
-            current_instruction->reg_result = node_colors[current_instruction->reg_result];
-        }
-
-        instruction_list_copy = instruction_list_copy->next;
-    }
-    
-    return instruction_list;
-    // 1 - Simplificar os regs do ILOC (coloração de grafos) [x]
-    //     1.1 Derramamento [ ]
-    // 2 - Verificar salvamento de registradores no ILOC (recursão, salvar regs na pilha) [ ]
-    // 3 - Mapeamento da tabela de simbolos global para o seguimento de dados do assembly (acho que é 1:1, direto) [ ]
-    // 4 - Mapeamento do ILOC simplificado para x86 [ ] (funcao de print instructions x86)
 }
 
 // regs especiais = num negativo referencia: code_gen.c (valores)

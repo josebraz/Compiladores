@@ -25,7 +25,7 @@ int get_live_interval(int reg, instruction_entry_t *instr, instruction_entry_t *
             // fase de procurar a primeira declaração
             if (current->entry->reg_result == reg) {
                 f_start = current;
-                f_end = current;
+                // f_end = current;
             }
         } else {
             // fase de procurar o último uso
@@ -36,8 +36,16 @@ int get_live_interval(int reg, instruction_entry_t *instr, instruction_entry_t *
         }
         current = current->next;
     }
-    *start = f_start;
-    *end = f_end;
+
+    if (f_end == NULL) {
+        // Só teve uma declaração, sem uso, então a vida 
+        // dessa variável vai ser entendida como nenhuma
+        *start = NULL;
+        *end = NULL;
+    } else {
+        *start = f_start;
+        *end = f_end;
+    }
 
     return f_start != NULL && f_end != NULL;
 }
@@ -114,7 +122,7 @@ graph_t *generate_depend_graph(instruction_entry_t *code) {
             if (current_live.start != NULL && 
                     instr_lst_contain(current_live.start->next, current_live.end, current_instr->entry) == 1) 
             {
-                for (int j = 0; j <= i; j++) {
+                for (int j = 0; j < i; j++) {
                     var_live other_live = live_lst[j];
                     if (other_live.start != NULL && 
                             instr_lst_contain(other_live.start->next, other_live.end, current_instr->entry) == 1) 
@@ -122,6 +130,7 @@ graph_t *generate_depend_graph(instruction_entry_t *code) {
                         graph[i][j] = 1;
                     }
                 }
+                graph[i][i] = 1;
             }
         }
         current_instr = current_instr->next;

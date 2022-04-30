@@ -14,6 +14,7 @@ Grupo: V
 #include "bool_lst.h"
 #include "instr_lst.h"
 #include "semantic.h"
+#include "depend_graph.h"
 #include "asp.h"
 #include "types.h"
 
@@ -158,10 +159,15 @@ void generate_fun_return(node *s, node *e) {
         int ret_reg = next_reg();
 
         instruction_entry_t *load_last_rsp = generate_instructionI("loadAI", RFP, 4, rsp_reg);
+        load_last_rsp->entry->reg_result = rsp_reg;
         instruction_entry_t *copy_rsp = generate_instructionI("i2i", rsp_reg, EMPTY, RSP);
+        copy_rsp->entry->reg_result = RFP;
         instruction_entry_t *load_last_rfp = generate_instructionI("loadAI", RFP, 8, rfp_reg);
+        load_last_rfp->entry->reg_result = rfp_reg;
         instruction_entry_t *copy_rfp = generate_instructionI("i2i", rfp_reg, EMPTY, RFP);
+        copy_rfp->entry->reg_result = RFP;
         instruction_entry_t *load_ret_end = generate_instructionI("loadAI", RFP, 0, ret_reg);
+        load_ret_end->entry->reg_result = ret_reg;
         instruction_entry_t *jump_ret = generate_jump(ret_reg);
 
         comment_instruction(load_ret_end, "Carrega end de retorno");
@@ -200,12 +206,44 @@ void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
     }
 }
 
-int is_destrutive_op(instruction_t *inst) {
-    if (inst->op3_type == OT_REG && (inst->op1 != EMPTY || inst->op2 != EMPTY)) {
-        return 1;
-    } else {
-        return 0;
+instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *code) {
+    graph_t *graph = generate_depend_graph(code);
+    int *node_colors;
+
+    // tenta colorir o grafo com 3 cores primeiro e vai aumentando
+    int result = 0;
+    int colors = 2;
+    while (result == 0) {
+        colors++;
+        result = try_color_graph(colors, graph, &node_colors);
     }
+
+    instruction_entry_t *instruction_list_copy = code;
+
+    /* loop through node_colors, whose size is the same as graph->size */
+    while (instruction_list_copy != NULL)
+    {
+        instruction_t *current_instruction = instruction_list_copy->entry;
+
+        /* Operand type is REGISTER and the index >= 0 means its a regular temp reg */
+        /* special registers are negative */
+        if (current_instruction->op1_type == OT_REG && current_instruction->op1 >= 0)
+            current_instruction->op1 = node_colors[current_instruction->op1];
+
+        if (current_instruction->op2_type == OT_REG && current_instruction->op2 >= 0)
+            current_instruction->op2 = node_colors[current_instruction->op2];
+
+        if (current_instruction->op3_type == OT_REG && current_instruction->op3 >= 0)
+            current_instruction->op3 = node_colors[current_instruction->op3];
+        
+        if (current_instruction->reg_result >= 0) {
+            current_instruction->reg_result = node_colors[current_instruction->reg_result];
+        }
+
+        instruction_list_copy = instruction_list_copy->next;
+    }
+    
+    return code;
 }
 
 void generate_fun_decl(node *fun) {
@@ -217,27 +255,44 @@ void generate_fun_decl(node *fun) {
 
     instruction_entry_t *instr_fun_label = generate_label_instruction(fun_decl->fun_label);
     instruction_entry_t *update_rfp = generate_instructionI("i2i", RSP, EMPTY, RFP);
+    update_rfp->entry->reg_result = RFP;
     int rsp_gap = function_scope->offset + 4 * 4; // offset de variáveis + end retorno, rsp salvo, rfp salvo, valor de retorno
 
     comment_instruction(instr_fun_label, "Declaração da função %s", fun_name);
 
-    instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START, 0, 0, "");
-    instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START, 0, 0, "");
-
     // If this function has childrens
     if (fun->nodes[0] != NULL)
     {
-        instruction_entry_t *fun_body_code = fun->nodes[0]->code;
+        instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
 
+        instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START, 0, 0, fun_name);
+        instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END, 0, 0, fun_name);
+
+        fun->code = instr_lst_join(6, start_fun_mark, instr_fun_label, update_rfp, 
+                                      update_rsp, fun->nodes[0]->code, end_fun_mark);
+
+        fun->code = optimize_iloc_register_usage(fun->code);
+
+        instruction_entry_t *fun_body_code = fun->nodes[0]->code;
+        instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START, 0, 0, "");
+        instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START, 0, 0, "");
+
+        int reg = 0;
         while (fun_body_code != NULL) 
         {
-            if (is_destrutive_op(fun_body_code->entry) == 1) 
+            if (fun_body_code->entry->reg_result == reg) 
             {
-                store_used_reg = instr_lst_join(2, store_used_reg, 
-                                generate_instructionS("storeAI", fun_body_code->entry->op3, RFP, rsp_gap));
-                load_used_reg = instr_lst_join(2, load_used_reg, 
-                                generate_instructionI("loadAI", RFP, rsp_gap, fun_body_code->entry->op3));
+                int used_reg = fun_body_code->entry->op3;
+
+                instruction_entry_t *load_inst = generate_instructionI("loadAI", RFP, rsp_gap, used_reg);
+                load_inst->entry->reg_result = used_reg;
+                instruction_entry_t *store_inst = generate_instructionS("storeAI", used_reg, RFP, rsp_gap);
+                store_inst->entry->reg_result = used_reg;
+
+                store_used_reg = instr_lst_join(2, store_used_reg, store_inst);
+                load_used_reg = instr_lst_join(2, load_used_reg, load_inst);
                 rsp_gap += 4;
+                reg++;
             }
 
             fun_body_code = fun_body_code->next;
@@ -249,20 +304,17 @@ void generate_fun_decl(node *fun) {
         load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END, 0, 0, ""));
         comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
 
-        instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
-
-        instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START, 0, 0, fun_name);
-        instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END, 0, 0, fun_name);
-
-        fun->code = instr_lst_join(7, start_fun_mark, instr_fun_label, update_rfp, 
-                                        update_rsp, store_used_reg, 
-                                        fun->nodes[0]->code, end_fun_mark);
+        // gravamos os registradores usados no início da função
+        update_rsp->next = NULL;
+        fun->nodes[0]->code->previous = NULL;
+        instr_lst_join(3, update_rsp, store_used_reg, fun->nodes[0]->code);
+        update_rsp->entry->op2 = rsp_gap;
 
         insert_restore_reg_code(fun->nodes[0], load_used_reg);
-    }
 
-    // Podemos liberar porque fizemos cópia dela na outra função
-    instr_lst_free(load_used_reg);
+        // Podemos liberar porque fizemos cópia dela na outra função
+        instr_lst_free(load_used_reg);
+    }
 }
 
 void generate_fun_call(node *s, node *params) {

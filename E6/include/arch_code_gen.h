@@ -11,8 +11,6 @@ Grupo: V
 #include "depend_graph.h"
 #include "code_gen.h"
 
-instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *instruction_list, int* node_colors, graph_t* graph);
-
 void print_x86_64_assembly_code(instruction_entry_t *instruction_list);
 
 int print_assembly_instruction(instruction_entry_t *instruction_lst);
