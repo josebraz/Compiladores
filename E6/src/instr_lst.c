@@ -32,10 +32,17 @@ int instr_lst_count(instruction_entry_t *list) {
 void instr_lst_free(instruction_entry_t *head) {
     instruction_entry_t *temp;
     instruction_entry_t *list = head;
-    while (list != NULL) {
+    
+    // TODO: Have no fucking idea why list->next equals to "Invalid read of size 8"
+    /* while list entry isn't null */
+    while (list->next != NULL) {
+        /* fetch next instruction and put it on temp */
         temp = list->next;
+        /* free the current instruction entry */
         free(list->entry);
+        /* free current instruction */
         free(list);
+        /* current instruction receives next instruction */
         list = temp;
     }
 }
@@ -64,6 +71,7 @@ instruction_entry_t *instr_lst_copy(instruction_entry_t *source) {
 
 instruction_entry_t *instr_lst_create_new(instruction_t *new_inst) {
     instruction_entry_t *new_entry = (instruction_entry_t*) malloc(sizeof(instruction_entry_t));
+    //TODO: Error below? Block was alloc'd at??
     new_entry->next = NULL;
     new_entry->previous = NULL;
     new_entry->entry = new_inst;
@@ -163,16 +171,26 @@ int instr_lst_contain(instruction_entry_t *start, instruction_entry_t *end, inst
 }
 
 instruction_entry_t *instr_lst_remove(instruction_entry_t *inst) {
-    instruction_entry_t *next = inst->next;
+    instruction_entry_t *current_instruction_next = inst->next;
+
+    /* If current instruction previous has value */
     if (inst->previous != NULL) {
-        inst->previous->next = next;
+        /* The previous next is the current instruction next */
+        /* (Don't know why) */
+        inst->previous->next = current_instruction_next;
     }
-    if (next != NULL) {
-        next->previous = inst->previous;
+
+    /* If the current instruction next has value */
+    if (current_instruction_next != NULL) {
+        /* current instruction next previous is the given instruction previous */
+        current_instruction_next->previous = inst->previous;
     }
+
+    // TODO: Address 0x4a57000 is 0 bytes inside a block of size 24 free'd
     free(inst->entry);
     free(inst);
-    return next;
+
+    return current_instruction_next;
 }
 
 instruction_entry_t *instr_lst_remove_mark_interval(
