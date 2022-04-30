@@ -96,6 +96,10 @@ extern void exporta(void *arvore) {
         code = instr_lst_remove_mark_interval(code, CODE_MARK_LOAD_REGS_START, CODE_MARK_LOAD_REGS_END);
         code = instr_lst_remove_mark_interval(code, CODE_MARK_INIT_CODE_START, CODE_MARK_INIT_CODE_END);
 
+        // atualiza o ponteiro da primeira instrução do iloc porque 
+        // ela pode ter mudado devido a remoção das marcações
+        ((node*) arvore)->code = code; 
+
         printf("REMOVE MARKS\n");
         print_instr_lst(code);
 
