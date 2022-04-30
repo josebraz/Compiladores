@@ -269,8 +269,9 @@ void generate_fun_call(node *s, node *params) {
     hashmap_t *global_scope;
     hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
 
-    instruction_entry_t *start_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_START, 0, 0, "");
-    instruction_entry_t *end_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_END, 0, 0, "");
+    instruction_entry_t *start_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_START, 0, 0, fun_name);
+    instruction_entry_t *end_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_END, 0, 0, fun_name);
+    instruction_entry_t *call_jump_mark = generate_mark(CODE_MARK_FUN_CALL_JUMP, 0, 0, fun_name);
     instruction_entry_t *store_rsp = generate_instructionS("storeAI", RSP, RSP, 4);
     instruction_entry_t *store_rfp = generate_instructionS("storeAI", RFP, RSP, 8);
 
@@ -305,8 +306,8 @@ void generate_fun_call(node *s, node *params) {
     comment_instruction(jump_fun, "Salta para a função %s()", fun_name);
 
     s->reg_result = ret_value_reg;
-    s->code = instr_lst_join(9, start_fun_call_mark, store_rsp, store_rfp, 
-                                param_lst, cal_ret_end,
+    s->code = instr_lst_join(10, start_fun_call_mark, store_rsp, store_rfp, 
+                                param_lst, call_jump_mark, cal_ret_end,
                                 store_ret_end, jump_fun, 
                                 load_return_value, end_fun_call_mark);
 }
@@ -519,6 +520,9 @@ int print_mark(instruction_t *inst) {
     case CODE_MARK_FUN_CALL_END:
         char_counter += printf("FUN CALL END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
+    case CODE_MARK_FUN_CALL_JUMP:
+        char_counter += printf("FUN CALL JUMP, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
     case CODE_MARK_FUN_RET_START:
         char_counter += printf("FUN RET START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
@@ -533,11 +537,14 @@ int print_mark(instruction_t *inst) {
 
 void print_instruction(instruction_t *inst) {
     int char_counter = 0;
-    if (inst->op1_type == OT_LABEL) {
+    if (strncmp(inst->code, "jump", 4) == 0) {
+        char_counter += printf("%s => ", inst->code);
+        char_counter += print_instr_param(inst->op1, inst->op1_type);
+    } else if (inst->op1_type == OT_LABEL) {
         char_counter += printf("L%d:", inst->op1);
     } else if (inst->op1_type == OT_MARK) {
         char_counter += print_mark(inst);
-    } else  if (strncmp(inst->code, "jump", 4) == 0) {
+    } else if (strncmp(inst->code, "jump", 4) == 0) {
         char_counter += printf("%s => ", inst->code);
         char_counter += print_instr_param(inst->op1, inst->op1_type);
     } else if (strncmp(inst->code, "store", 5) == 0 || strcmp(inst->code, "cbr") == 0) {
@@ -709,7 +716,7 @@ instruction_entry_t *generate_jumpI(int label) {
 
 instruction_entry_t *generate_mark(int type, int p1, int p2, char *param) {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
-    strcpy(instr->code, "jumpI");
+    strcpy(instr->code, "");
     instr->lazy = 0;
     instr->reg_result = -1;
     instr->op1_type = OT_MARK;

@@ -136,6 +136,13 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             print_fun_footer(fun_entry, fun_name);
         }
         return 1;
+    } else if (mark_type == CODE_MARK_FUN_CALL_START) {
+        // printf("\tcall\t%s\n", fun_name);
+        return 1;
+    } else if (mark_type == CODE_MARK_FUN_CALL_JUMP) {
+        char *fun_name = instruction->mark_property;
+        printf("\tcall\t%s\n", fun_name);
+        return 4; // marcação + add rpc + store ret + jump
     }
     return 0;
 }

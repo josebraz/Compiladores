@@ -28,6 +28,7 @@ Grupo: V
 #define CODE_MARK_FUN_RET_END        10
 #define CODE_MARK_FUN_CALL_START     11
 #define CODE_MARK_FUN_CALL_END       12
+#define CODE_MARK_FUN_CALL_JUMP      13
 
 
 int next_reg();
