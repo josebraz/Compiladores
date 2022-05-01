@@ -79,6 +79,10 @@ int print_assembly_instruction(instruction_entry_t *instruction_lst) {
     if (temp > 0) {
         return temp;
     }
+    temp = print_jump_instruction(instruction_lst);
+    if (temp > 0) {
+        return temp;
+    }
     temp = print_label(instruction_lst);
     if (temp > 0) {
         return temp;
@@ -99,7 +103,7 @@ void print_fun_header(hashmap_value_t *fun_value, char *fun_name) {
     printf("\t.globl\t%s\n", fun_name);
     printf("\t.type\t%s, @function\n", fun_name);
     printf("%s:\n", fun_name);
-    printf(".LFB0:\n");
+    printf(".LFB%d:\n", fun_value->fun_label);
     printf("\t.cfi_startproc\n");
     printf("\tendbr64\n");
     printf("\tpushq\t%%rbp\n");
@@ -107,11 +111,10 @@ void print_fun_header(hashmap_value_t *fun_value, char *fun_name) {
     printf("\t.cfi_offset 6, -16\n");
     printf("\tmovq\t%%rsp, %%rbp\n");
     printf("\t.cfi_def_cfa_register 6\n");
-    // TODO: deslocar o rsp para a quantidade de valores da pilha: subq	$16, %rsp
 }
 
 void print_fun_footer(hashmap_value_t *fun_value, char *fun_name) {
-    printf(".LFE0:\n");
+    printf(".LFE%d:\n", fun_value->fun_label);
     printf("\t.size\t%s, .-%s\n", fun_name, fun_name);
 }
 
@@ -153,34 +156,53 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             print_fun_footer(fun_entry, fun_name);
         }
         return 1;
-    } else if (mark_type == CODE_MARK_FUN_CALL_START) {
-        return 1;
     } else if (mark_type == CODE_MARK_FUN_CALL_JUMP) {
         char *fun_name = instruction->mark_property;
+        // MARK: CODE_MARK_FUN_CALL_JUMP, p1 = 0, p2 = 0
+        // addI rpc, 3 => r0
+        // storeAI r0 => rsp, 0
+        // jumpI => L0   
         printf("\tcall\t%s\n", fun_name);
         return 4; // marcação + add rpc + store ret + jump
-    } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE) {
-        // TODO: bug = retorno de funcao nao ta passando valor pro eax 
-        // sempre é storeAI
-        instruction_t* return_value_instruction = instruction_lst->next->entry;
-        // storeAI r13 => rfp, 12        // Escreve o valor de retorno na pilha
-        if (return_value_instruction->op1 != 0) { // se já não está no EAX
-            char reg_name[10];
-            print_instruction_parameter(return_value_instruction->op1, return_value_instruction->op1_type, reg_name);
-            printf("\tmovl\t%s, %%eax\n", reg_name);
-        }
-        printf("\tleave\n\t.cfi_def_cfa 7, 8 \n\tret\n\t.cfi_endproc\n");
-        return 4;
     } else if (mark_type == CODE_MARK_FUN_RET_END) {
-        // Caso de encerramento de uma função geral, jump => r0 nao processado
-        instruction_t* previous_instruction_jump = instruction_lst->previous->entry;
-        char reg_name[10];
-        print_instruction_parameter(previous_instruction_jump->op1, previous_instruction_jump->op1_type, reg_name);
-        printf("\tpopq\t%%rbp\n");
-        printf("\tleave\n\t.cfi_def_cfa 7, 8\n\tret\n\t.cfi_endproc\n");
-        // Consome jump, três marks
+        // Caso de encerramento de uma função geral
+        printf("\t.cfi_endproc\n");
         return 1;
-    } else if (mark_type == CODE_MARK_SAVE_REGS_START || mark_type == CODE_MARK_SAVE_REGS_END) {
+    } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE_END) {
+        char *fun_name = instruction->mark_property;
+        if (strcmp(fun_name, "main") == 0) {
+            // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
+            // halt                          // Termina o programa
+            printf("\tleave\n");
+            printf("\t.cfi_def_cfa 7, 8\n");
+            printf("\tret\n");
+            return 2; // mark value_end + halt + mark ret_end
+        } else {
+            // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
+            // loadAI rfp, 4 => r0           // Carrega ultimo RSP
+            // i2i r0 => rsp
+            // loadAI rfp, 8 => r0           // Carrega ultimo RFP
+            // i2i r0 => rfp
+            // loadAI rfp, 0 => r0           // Carrega end de retorno
+            // jump => r0
+            printf("\tpopq\t%%rbp\n");
+            printf("\t.cfi_def_cfa 7, 8\n");
+            printf("\tret\n");
+            return 7;
+        }
+    } else if (mark_type == CODE_MARK_FUN_CALL_START) {
+        // MARK: CODE_MARK_FUN_CALL_START, p1 = 0, p2 = 0// Início do retorno
+        // storeAI rsp => rsp, 4         // Inicio da chamada de aaaaa()
+        // storeAI rfp => rsp, 8
+        return 3;
+    } else if (mark_type == CODE_MARK_SAVE_REGS_START || 
+               mark_type == CODE_MARK_SAVE_REGS_END || 
+               mark_type == CODE_MARK_FUN_RETURN_VALUE_START || 
+               mark_type == CODE_MARK_FUN_CALL_END ||
+               mark_type == CODE_MARK_LOAD_REGS_START || 
+               mark_type == CODE_MARK_LOAD_REGS_END ||
+               mark_type == CODE_MARK_FUN_RET_START) 
+    {
         // Só consome, achoo que não vamos precisar
         return 1;
     } 
@@ -198,8 +220,26 @@ int print_conver_fail(instruction_entry_t *instruction_lst) {
 
 int print_label(instruction_entry_t *instruction_lst) {
     if (instruction_lst->entry->op1_type == OT_LABEL) {
-        printf("L%d:\n", instruction_lst->entry->op1);
+        printf(".L%d:\n", instruction_lst->entry->op1);
         return 1;
+    }
+    return 0;
+}
+
+int print_jump_instruction(instruction_entry_t *instruction_lst) {
+    instruction_t *instruction = instruction_lst->entry;
+    char asm_op1[10];
+
+    if (strncmp(instruction->code, "jump", 4) == 0) {
+        if (instruction->op1_type == OT_REG) {
+            print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+            printf("\tpushl\t%s\n", asm_op1);
+            printf("\tret\n");
+            return 1;
+        } else if (instruction->op1_type == OT_LABEL) {
+            printf("\tjmp \t.L%d\n", instruction->op1);
+            return 1;
+        }
     }
     return 0;
 }
@@ -215,9 +255,6 @@ char get_correct_suffix(int op1, int op1_type, int op2, int op2_type) {
         return 'q';
     }
     if (op1 == RPC || op2 == RPC) {
-        return 'q';
-    }
-    if ((op1 >= 4 && op1 <= 11 && op1_type == OT_REG) || (op2 >= 4 && op2 <= 11 && op2_type == OT_REG)) {
         return 'q';
     }
     return 'l'; // só suportamos inteiro :)
@@ -238,8 +275,9 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         return 1;
     } else if (strcmp(instruction->code, "loadAI") == 0) {
         suffix = get_correct_suffix(-1, OT_REG, instruction->op3, instruction->op3_type);
-        if (instruction->op2 != 0) {
-            printf("\tmov%c\t-%d(%s), %s\n", suffix, instruction->op2, asm_op1, asm_op3);
+        int offset = -(instruction->op2 - 8); // rsp, rfp e end retorno vão estar na pilha
+        if (offset != 0) {
+            printf("\tmov%c\t%d(%s), %s\n", suffix, offset, asm_op1, asm_op3);
         } else {
             printf("\tmov%c\t(%s), %s\n", suffix, asm_op1, asm_op3);
         }
@@ -287,8 +325,9 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         return 1;
     } else if (strcmp(instruction->code, "storeAI") == 0) {
         suffix = get_correct_suffix(instruction->op1, instruction->op1_type, -1, OT_REG);
-        if (instruction->op3 != 0) {
-            printf("\tmov%c\t%s, -%d(%s)\n", suffix, asm_op1, instruction->op3, asm_op2);
+        int offset = -(instruction->op3 - 8); // rsp, rfp e end retorno vão estar na pilha
+        if (offset != 0) {
+            printf("\tmov%c\t%s, %d(%s)\n", suffix, asm_op1, offset, asm_op2);
         } else {
             printf("\tmov%c\t%s, (%s)\n", suffix, asm_op1, asm_op2);
         }
@@ -424,28 +463,28 @@ void print_instruction_parameter(int op, int op_type, char *dest) {
             strcpy(dest, "%edx");
             break;
         case 4:
-            strcpy(dest, "%r8");
+            strcpy(dest, "%r8d");
             break;
         case 5:
-            strcpy(dest, "%r9");
+            strcpy(dest, "%r9d");
             break;
         case 6:
-            strcpy(dest, "%r10");
+            strcpy(dest, "%r10d");
             break;
         case 7:
-            strcpy(dest, "%r11");
+            strcpy(dest, "%r11d");
             break;
         case 8:
-            strcpy(dest, "%r12");
+            strcpy(dest, "%r12d");
             break;
         case 9:
-            strcpy(dest, "%r13");
+            strcpy(dest, "%r13d");
             break;
         case 10:
-            strcpy(dest, "%r14");
+            strcpy(dest, "%r14d");
             break;
         case 11:
-            strcpy(dest, "%r15");
+            strcpy(dest, "%r15d");
             break;
         default:
             break;

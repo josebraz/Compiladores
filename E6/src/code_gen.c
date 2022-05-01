@@ -146,14 +146,14 @@ void generate_fun_return(node *s, node *e) {
 
     instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0, fun_scope->label);
     instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0, fun_scope->label);
-    instruction_entry_t *fun_return_value_mark = generate_mark(CODE_MARK_FUN_RETURN_VALUE, 0, 0, fun_scope->label);
+    instruction_entry_t *fun_return_value_mark = generate_mark(CODE_MARK_FUN_RETURN_VALUE_START, 0, 0, fun_scope->label);
+    instruction_entry_t *fun_return_value_mark_end = generate_mark(CODE_MARK_FUN_RETURN_VALUE_END, 0, 0, fun_scope->label);
 
     if (strcmp(fun_scope->label, "main") == 0) {
-        // TODO: acredito que a mark CODE_MARK_FUN_RETURN_VALUE deve aparecer no final de cada funcao
         instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
         comment_instruction(instr_halt, "Termina o programa");
-        s->code = instr_lst_join(6, ret_start_mark, e->code, fun_return_value_mark,
-                                    store_result, instr_halt, ret_end_mark);
+        s->code = instr_lst_join(7, ret_start_mark, e->code, fun_return_value_mark,
+                                    store_result, fun_return_value_mark_end, instr_halt, ret_end_mark);
     } else {
         int rsp_reg = next_reg();
         int rfp_reg = next_reg();
@@ -175,8 +175,8 @@ void generate_fun_return(node *s, node *e) {
         comment_instruction(load_last_rsp, "Carrega ultimo RSP");
         comment_instruction(load_last_rfp, "Carrega ultimo RFP");
 
-        s->code = instr_lst_join(11, ret_start_mark, e->code, fun_return_value_mark, store_result,
-                                 load_last_rsp, copy_rsp, 
+        s->code = instr_lst_join(12, ret_start_mark, e->code, fun_return_value_mark, store_result,
+                                 fun_return_value_mark_end, load_last_rsp, copy_rsp, 
                                  load_last_rfp, copy_rfp, 
                                  load_ret_end, jump_ret, ret_end_mark);
     }
@@ -187,7 +187,7 @@ void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
         instruction_entry_t *copy = instr_lst_copy(restore_code);
         instruction_entry_t *current = n->code;
         while (current != NULL && 
-                (current->entry->op1 != CODE_MARK_FUN_RETURN_VALUE && current->entry->op1 != OT_MARK)) {
+                (current->entry->op1 != CODE_MARK_FUN_RETURN_VALUE_START && current->entry->op1 != OT_MARK)) {
             current = current->next;
         }
         if (current != NULL) {
@@ -587,8 +587,11 @@ int print_mark(instruction_t *inst) {
     case CODE_MARK_FUN_RET_END:
         char_counter += printf("CODE_MARK_FUN_RET_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
-    case CODE_MARK_FUN_RETURN_VALUE:
-        char_counter += printf("CODE_MARK_FUN_RETURN_VALUE, p1 = %d, p2 = %d", inst->op2, inst->op3);
+    case CODE_MARK_FUN_RETURN_VALUE_START:
+        char_counter += printf("CODE_MARK_FUN_RETURN_VALUE_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_FUN_RETURN_VALUE_END:
+        char_counter += printf("CODE_MARK_FUN_RETURN_VALUE_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     default:
         break;

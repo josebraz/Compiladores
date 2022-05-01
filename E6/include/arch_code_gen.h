@@ -17,6 +17,8 @@ int print_assembly_instruction(instruction_entry_t *instruction_lst);
 
 int print_label(instruction_entry_t *instruction_lst);
 
+int print_jump_instruction(instruction_entry_t *instruction_lst);
+
 int print_general_instruction(instruction_entry_t *instruction_lst);
 
 int print_mem_instruction(instruction_entry_t *instruction_lst);
