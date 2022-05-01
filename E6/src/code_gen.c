@@ -184,21 +184,44 @@ void generate_fun_return(node *s, node *e) {
 
 void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
     if (strcmp(n->label, "return") == 0) {
-        instruction_entry_t *copy = instr_lst_copy(restore_code);
         instruction_entry_t *current = n->code;
         while (current != NULL && 
-                (current->entry->op1 != CODE_MARK_FUN_RETURN_VALUE_START && current->entry->op1 != OT_MARK)) {
+                (current->entry->op1 != CODE_MARK_FUN_CALL_END && current->entry->op1 != OT_MARK)) {
             current = current->next;
         }
         if (current != NULL) {
-            // colocamos a restauração dos regs depois do store do resultado
-            current = current->next->next;
-            instruction_entry_t *previous = current->previous;
-            if (previous != NULL) {
-                previous->next = copy;
-                copy->previous = previous;
+            instruction_entry_t *copy = instr_lst_copy(restore_code);
+            int result_reg = current->previous->entry->op3; // loadAI rsp, 12 => result_reg
+            // não restaura o registrador usado para o retorno da funçao
+            instruction_entry_t *temp = copy;
+            while (temp != NULL) {
+                if (temp->entry->op3 == result_reg && temp->entry->op3_type == OT_REG) {
+                    if (temp->previous != NULL) {
+                        temp->previous->next = temp->next;
+                    }
+                    if (temp->next != NULL) {
+                        temp->next->previous = temp->previous;
+                    }
+
+                    if (temp == copy) { // removemos a primeira instrução
+                        copy = copy->next;
+                    }
+                    free(temp->entry);
+                    free(temp);
+                    break;
+                }
+                temp = temp->next;
             }
-            instr_lst_join(2, copy, current);
+
+            // colocamos a restauração dos regs depois do store do resultado
+            if (copy != NULL) {
+                instruction_entry_t *previous = current->previous;
+                if (previous != NULL) {
+                    previous->next = copy;
+                    copy->previous = previous;
+                }
+                instr_lst_join(2, copy, current);
+            }
         }
     } else {
         for (int i = 0; i < n->size; i++) {
@@ -319,7 +342,7 @@ void generate_fun_decl(node *fun) {
             update_rsp->entry->op2 = rsp_gap;
         }
 
-        if (strcmp(fun_name, "main") != 0) {
+        if (fun_decl->fun_call_other_fun >= 0) {
             insert_restore_reg_code(fun->nodes[0], load_used_reg);
         }
 
