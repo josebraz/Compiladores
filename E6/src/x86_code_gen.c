@@ -59,11 +59,20 @@ void print_x86_64_assembly_code(instruction_entry_t *instruction_list) {
     print_global_var();
 
     instruction_entry_t *current = instruction_list;
-    while (current != NULL) {
+
+    int keep_seeking = 1;
+
+    while (keep_seeking != 0) {
         int processed = print_assembly_instruction(current);
 
-        for (int i = 0; i < processed; i++)
+        for (int i = 0; i < processed; i++) {
+            if (current->next == NULL) {
+                keep_seeking = 0;
+                break;
+            }
+
             current = current->next;
+        }
     }
 }
 

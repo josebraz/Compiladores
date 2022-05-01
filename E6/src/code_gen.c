@@ -526,6 +526,7 @@ void print_instr_lst(instruction_entry_t *entry) {
     }
     instruction_entry_t *current = entry;
     while (current != NULL && current->entry != NULL) {
+        printf("#");
         print_instruction(current->entry);
         current = current->next;
     }
