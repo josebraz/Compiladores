@@ -331,7 +331,6 @@ void generate_fun_call(node *s, node *params) {
 
     // para cada parametro da função cria um store
     instruction_entry_t *param_lst = NULL;
-
     if (params != NULL) {
         int param_offset = 16;
         param_lst = params->code;
