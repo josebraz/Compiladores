@@ -1,3 +1,4 @@
+#!/bin/sh
 # root dir
 cd ..
 
@@ -26,7 +27,7 @@ gcc test-out.o -o test
 echo ""
 
 echo "Program return:"
-cd .. 
+cd ../tests
 ./test 
 echo $?
 

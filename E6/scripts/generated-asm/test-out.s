@@ -12,17 +12,13 @@ main:
 	subq	$48, %rsp
 	movl	%eax, -28(%rbp)
 	movl	%ebx, -32(%rbp)
-	movq	$10, %eax
+	movl	$10, %eax
 	movl	%eax, -16(%rbp)
 	movl	$20, %eax
 	movl	%eax, -20(%rbp)
 	movl	$30, %eax
 	movl	%eax, -24(%rbp)
 	# Não rolou de imprimir: // MARK: CODE_MARK_FUN_RET_START, p1 = 0, p2 = 0
-	# Não rolou de imprimir: // MARK: CODE_MARK_LOAD_REGS_START, p1 = 0, p2 = 0// Restaura o estado dos registradores usados
-	movl	-28(%rbp), %eax
-	movl	-32(%rbp), %ebx
-	# Não rolou de imprimir: // MARK: CODE_MARK_LOAD_REGS_END p1 = 0, p2 = 0
 	movl	-16(%rbp), %eax
 	movl	-20(%rbp), %ebx
 	addl	%ebx, %eax
