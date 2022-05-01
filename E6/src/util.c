@@ -89,8 +89,8 @@ void generate_dot(void *arvore) {
 extern void exporta(void *arvore) {
     if (arvore != NULL) {
         instruction_entry_t *code = ((node*) arvore)->code;
-        printf("\n ------- ILOC CODE ---------- \n");
-        print_instr_lst(code);
+        // printf("\n ------- ILOC CODE ---------- \n");
+        // print_instr_lst(code);
 
         // code = instr_lst_remove_mark_interval(code, CODE_MARK_SAVE_REGS_START, CODE_MARK_SAVE_REGS_END);
         // code = instr_lst_remove_mark_interval(code, CODE_MARK_LOAD_REGS_START, CODE_MARK_LOAD_REGS_END);
@@ -100,7 +100,7 @@ extern void exporta(void *arvore) {
         // ela pode ter mudado devido a remoção das marcações
         ((node*) arvore)->code = code;
 
-        printf("\n\n ------- ASSEMBLY CODE ----------\n");
+        // printf("\n\n ------- ASSEMBLY CODE ----------\n");
         print_x86_64_assembly_code(code);
     }
 }

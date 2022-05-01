@@ -191,7 +191,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
 // ultimo caso, quando não deu pra converter a instrução nos 
 // mostramos isso, REMOVER ANTES DE ENTREGAR
 int print_conver_fail(instruction_entry_t *instruction_lst) {
-    printf("\t##### Não rolou de imprimir: ");
+    printf("\t# Não rolou de imprimir: ");
     print_instruction(instruction_lst->entry);
     return 1;
 }
