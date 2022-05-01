@@ -56,10 +56,30 @@ fn:
 	.cfi_endproc
 .LFE0:
 	.size	fn, .-fn
+	.globl	foo
+	.type	foo, @function
+foo:
+.LFB1:
+	.cfi_startproc
+	endbr64	
+	pushq	%rbp	#
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rsp, %rbp	#,
+	.cfi_def_cfa_register 6
+# main.c:9:     return 20;
+	movl	$20, %eax	#, _1
+# main.c:10: }
+	popq	%rbp	#
+	.cfi_def_cfa 7, 8
+	ret	
+	.cfi_endproc
+.LFE1:
+	.size	foo, .-foo
 	.globl	main
 	.type	main, @function
 main:
-.LFB1:
+.LFB2:
 	.cfi_startproc
 	endbr64	
 	pushq	%rbp	#
@@ -70,24 +90,24 @@ main:
 	pushq	%rbx	#
 	subq	$16, %rsp	#,
 	.cfi_offset 3, -24
-# main.c:12:     c = 100;
+# main.c:16:     c = 100;
 	movl	$100, -12(%rbp)	#, c
-# main.c:13:     return c + 5 + fn();
+# main.c:17:     return c + 5 + fn();
 	movl	-12(%rbp), %eax	# c, tmp86
 	leal	5(%rax), %ebx	#, _1
-# main.c:13:     return c + 5 + fn();
+# main.c:17:     return c + 5 + fn();
 	movl	$0, %eax	#,
 	call	fn	#
-# main.c:13:     return c + 5 + fn();
+# main.c:17:     return c + 5 + fn();
 	addl	%ebx, %eax	# _1, _6
-# main.c:14: }
+# main.c:18: }
 	addq	$16, %rsp	#,
 	popq	%rbx	#
 	popq	%rbp	#
 	.cfi_def_cfa 7, 8
 	ret	
 	.cfi_endproc
-.LFE1:
+.LFE2:
 	.size	main, .-main
 	.ident	"GCC: (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0"
 	.section	.note.GNU-stack,"",@progbits

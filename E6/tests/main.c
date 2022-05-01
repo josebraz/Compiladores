@@ -5,6 +5,10 @@ int fn() {
     return 10;
 }
 
+int foo() {
+    return 20;
+}
+
 int main() {
     int a;
     int b;

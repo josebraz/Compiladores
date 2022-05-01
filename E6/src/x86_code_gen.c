@@ -152,6 +152,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         printf("\tcall\t%s\n", fun_name);
         return 4; // marcação + add rpc + store ret + jump
     } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE) {
+        // TODO: bug = retorno de funcao nao ta passando valor pro eax 
         // sempre é storeAI
         instruction_t* return_value_instruction = instruction_lst->next->entry;
         // storeAI r13 => rfp, 12        // Escreve o valor de retorno na pilha
@@ -159,7 +160,16 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         print_instruction_parameter(return_value_instruction->op1, return_value_instruction->op1_type, reg_name);
         printf("\tmovl\t%s, %%eax\n", reg_name);
         printf("\tleave\n\t.cfi_def_cfa 7, 8 \n\tret\n\t.cfi_endproc\n");
-        return 4; 
+        return 4;
+    } else if (mark_type == CODE_MARK_FUN_RET_END) {
+        // Caso de encerramento de uma função geral, jump => r0 nao processador
+        instruction_t* previous_instruction_jump = instruction_lst->previous->entry;
+        char reg_name[10];
+        print_instruction_parameter(previous_instruction_jump->op1, previous_instruction_jump->op1_type, reg_name);
+        printf("\tpopq\t%%rbp\n");
+        printf("\t.cfi_def_cfa 7, 8\n\tret\n\t.cfi_endproc\n");
+        // Consome jump, três marks
+        return 1;
     }
 
     return 0;
