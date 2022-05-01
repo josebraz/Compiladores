@@ -15,6 +15,7 @@ storeAI r0 => rfp, 16
 // MARK: CODE_MARK_SAVE_REGS_END, p1 = 0, p2 = 0
 // MARK: CODE_MARK_FUN_RET_START, p1 = 0, p2 = 0
 loadI 10 => r0                // Início do retorno
+// MARK: CODE_MARK_FUN_RETURN_VALUE, p1 = 0, p2 = 0
 storeAI r0 => rfp, 12         // Escreve o valor de retorno na pilha
 // MARK: CODE_MARK_LOAD_REGS_START, p1 = 0, p2 = 0// Restaura o estado dos registradores usados
 loadAI rfp, 16 => r0
@@ -36,6 +37,7 @@ storeAI r0 => rfp, 16
 // MARK: CODE_MARK_SAVE_REGS_END, p1 = 0, p2 = 0
 // MARK: CODE_MARK_FUN_RET_START, p1 = 0, p2 = 0
 loadI 20 => r0                // Início do retorno
+// MARK: CODE_MARK_FUN_RETURN_VALUE, p1 = 0, p2 = 0
 storeAI r0 => rfp, 12         // Escreve o valor de retorno na pilha
 // MARK: CODE_MARK_LOAD_REGS_START, p1 = 0, p2 = 0// Restaura o estado dos registradores usados
 loadAI rfp, 16 => r0
@@ -103,9 +105,11 @@ LFB0:
 	##### Não rolou de imprimir: // MARK: CODE_MARK_SAVE_REGS_END, p1 = 0, p2 = 0
 	##### Não rolou de imprimir: // MARK: CODE_MARK_FUN_RET_START, p1 = 0, p2 = 0
 	movl	$10, %rax
-	movl	%rax, -12(%rbp)
-	##### Não rolou de imprimir: // MARK: CODE_MARK_LOAD_REGS_START, p1 = 0, p2 = 0// Restaura o estado dos registradores usados
-	movl	-16(%rbp), %rax
+	movl	%rax, %eax
+	leave
+	.cfi_def_cfa 7, 8 
+	ret
+	.cfi_endproc
 	##### Não rolou de imprimir: // MARK: CODE_MARK_LOAD_REGS_END p1 = 0, p2 = 0
 	movl	-4(%rbp), %rax
 	movl	%rax, %rsp
@@ -136,9 +140,11 @@ LFB0:
 	##### Não rolou de imprimir: // MARK: CODE_MARK_SAVE_REGS_END, p1 = 0, p2 = 0
 	##### Não rolou de imprimir: // MARK: CODE_MARK_FUN_RET_START, p1 = 0, p2 = 0
 	movl	$20, %rax
-	movl	%rax, -12(%rbp)
-	##### Não rolou de imprimir: // MARK: CODE_MARK_LOAD_REGS_START, p1 = 0, p2 = 0// Restaura o estado dos registradores usados
-	movl	-16(%rbp), %rax
+	movl	%rax, %eax
+	leave
+	.cfi_def_cfa 7, 8 
+	ret
+	.cfi_endproc
 	##### Não rolou de imprimir: // MARK: CODE_MARK_LOAD_REGS_END p1 = 0, p2 = 0
 	movl	-4(%rbp), %rax
 	movl	%rax, %rsp

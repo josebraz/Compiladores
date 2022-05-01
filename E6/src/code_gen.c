@@ -146,11 +146,12 @@ void generate_fun_return(node *s, node *e) {
 
     instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0, fun_scope->label);
     instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0, fun_scope->label);
+    instruction_entry_t *fun_return_value_mark = generate_mark(CODE_MARK_FUN_RETURN_VALUE, 0, 0, fun_scope->label);
 
     if (strcmp(fun_scope->label, "main") == 0) {
+        // TODO: acredito que a mark CODE_MARK_FUN_RETURN_VALUE deve aparecer no final de cada funcao
         instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
         comment_instruction(instr_halt, "Termina o programa");
-        instruction_entry_t *fun_return_value_mark = generate_mark(CODE_MARK_FUN_RETURN_VALUE, 0, 0, fun_scope->label);
         s->code = instr_lst_join(6, ret_start_mark, e->code, fun_return_value_mark,
                                     store_result, instr_halt, ret_end_mark);
     } else {
@@ -174,7 +175,7 @@ void generate_fun_return(node *s, node *e) {
         comment_instruction(load_last_rsp, "Carrega ultimo RSP");
         comment_instruction(load_last_rfp, "Carrega ultimo RFP");
 
-        s->code = instr_lst_join(10, ret_start_mark, e->code, store_result,
+        s->code = instr_lst_join(11, ret_start_mark, e->code, fun_return_value_mark, store_result,
                                  load_last_rsp, copy_rsp, 
                                  load_last_rfp, copy_rfp, 
                                  load_ret_end, jump_ret, ret_end_mark);

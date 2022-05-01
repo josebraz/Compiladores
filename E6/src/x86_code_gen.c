@@ -162,7 +162,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         printf("\tleave\n\t.cfi_def_cfa 7, 8 \n\tret\n\t.cfi_endproc\n");
         return 4;
     } else if (mark_type == CODE_MARK_FUN_RET_END) {
-        // Caso de encerramento de uma função geral, jump => r0 nao processador
+        // Caso de encerramento de uma função geral, jump => r0 nao processado
         instruction_t* previous_instruction_jump = instruction_lst->previous->entry;
         char reg_name[10];
         print_instruction_parameter(previous_instruction_jump->op1, previous_instruction_jump->op1_type, reg_name);
