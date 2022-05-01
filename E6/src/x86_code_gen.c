@@ -102,6 +102,7 @@ void print_fun_header(hashmap_value_t *fun_value, char *fun_name) {
     printf(".LFB0:\n");
     printf("\t.cfi_startproc\n");
     printf("\tendbr64\n");
+    printf("\tpushq\t%%rbp\n");
     printf("\t.cfi_def_cfa_offset 16\n");
     printf("\t.cfi_offset 6, -16\n");
     printf("\tmovq\t%%rsp, %%rbp\n");
@@ -141,10 +142,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         // estamos na instrução de deslocamento da pilha
         // precisa ser um múltiplo de 16 e um sub, exemplo: subq $32, %rsp
         int offset = current->entry->op2;
-        printf("\t#ERA: %d\n", offset);
-        float remain = offset % 16;
-        offset += 16 - remain;
-        printf("\t#VIROU: %d\n", offset);
+        offset += 16 - (offset % 16);
         current->entry->op2 = offset;
         strcpy(current->entry->code, "subI");
         return 3 + print_general_instruction(current);
@@ -179,7 +177,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         char reg_name[10];
         print_instruction_parameter(previous_instruction_jump->op1, previous_instruction_jump->op1_type, reg_name);
         printf("\tpopq\t%%rbp\n");
-        printf("\t.cfi_def_cfa 7, 8\n\tret\n\t.cfi_endproc\n");
+        printf("\tleave\n\t.cfi_def_cfa 7, 8\n\tret\n\t.cfi_endproc\n");
         // Consome jump, três marks
         return 1;
     } else if (mark_type == CODE_MARK_SAVE_REGS_START || mark_type == CODE_MARK_SAVE_REGS_END) {
