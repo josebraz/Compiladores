@@ -186,10 +186,13 @@ void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
     if (strcmp(n->label, "return") == 0) {
         instruction_entry_t *copy = instr_lst_copy(restore_code);
         instruction_entry_t *current = n->code;
-        while (current != NULL && strcmp(current->entry->code, "loadAI") != 0) {
+        while (current != NULL && 
+                (current->entry->op1 != CODE_MARK_FUN_RETURN_VALUE && current->entry->op1 != OT_MARK)) {
             current = current->next;
         }
         if (current != NULL) {
+            // colocamos a restauração dos regs depois do store do resultado
+            current = current->next->next;
             instruction_entry_t *previous = current->previous;
             if (previous != NULL) {
                 previous->next = copy;
@@ -311,7 +314,9 @@ void generate_fun_decl(node *fun) {
         instr_lst_join(3, update_rsp, store_used_reg, fun->nodes[0]->code);
         update_rsp->entry->op2 = rsp_gap;
 
-        insert_restore_reg_code(fun->nodes[0], load_used_reg);
+        if (strcmp(fun_name, "main") != 0) {
+            insert_restore_reg_code(fun->nodes[0], load_used_reg);
+        }
 
         // Podemos liberar porque fizemos cópia dela na outra função
         instr_lst_free(load_used_reg);

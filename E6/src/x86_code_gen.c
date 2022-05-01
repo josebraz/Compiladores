@@ -204,20 +204,20 @@ int print_label(instruction_entry_t *instruction_lst) {
     return 0;
 }
 
-char get_correct_suffix(int reg1, int reg2) {
-    if (reg1 == RBSS || reg2 == RBSS) {
+char get_correct_suffix(int op1, int op1_type, int op2, int op2_type) {
+    if (op1 == RBSS || op2 == RBSS) {
         return 'q';
     }
-    if (reg1 == RSP || reg2 == RSP) {
+    if (op1 == RSP || op2 == RSP) {
         return 'q';
     }
-    if (reg1 == RFP || reg2 == RFP) {
+    if (op1 == RFP || op2 == RFP) {
         return 'q';
     }
-    if (reg1 == RPC || reg2 == RPC) {
+    if (op1 == RPC || op2 == RPC) {
         return 'q';
     }
-    if ((reg1 >= 4 && reg1 <= 11) || (reg2 >= 4 && reg2 <= 11)) {
+    if ((op1 >= 4 && op1 <= 11 && op1_type == OT_REG) || (op2 >= 4 && op2 <= 11 && op2_type == OT_REG)) {
         return 'q';
     }
     return 'l'; // só suportamos inteiro :)
@@ -233,11 +233,11 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
     print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op3);
     
     if (strcmp(instruction->code, "load") == 0) {
-        suffix = get_correct_suffix(-1, instruction->op3);
+        suffix = get_correct_suffix(-1, OT_REG, instruction->op3, instruction->op3_type);
         printf("\tmov%c\t(%s), %s\n", suffix, asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "loadAI") == 0) {
-        suffix = get_correct_suffix(-1, instruction->op3);
+        suffix = get_correct_suffix(-1, OT_REG, instruction->op3, instruction->op3_type);
         if (instruction->op2 != 0) {
             printf("\tmov%c\t-%d(%s), %s\n", suffix, instruction->op2, asm_op1, asm_op3);
         } else {
@@ -274,19 +274,19 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
                 return result + 1;
             }
         }
-        suffix = get_correct_suffix(instruction->op2, instruction->op3);
+        suffix = get_correct_suffix(instruction->op2, instruction->op2_type, instruction->op3, instruction->op3_type);
         printf("\tmov%c\t%s, %s\n", suffix, asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "i2i") == 0) {
-        suffix = get_correct_suffix(instruction->op1, instruction->op3);
+        suffix = get_correct_suffix(instruction->op1, instruction->op1_type, instruction->op3, instruction->op3_type);
         printf("\tmov%c\t%s, %s\n", suffix, asm_op1, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "store") == 0) {
-        suffix = get_correct_suffix(instruction->op2, -1);
+        suffix = get_correct_suffix(instruction->op2, instruction->op2_type, -1, OT_REG);
         printf("\tmov%c\t%s, (%s)\n", suffix, asm_op2, asm_op3);
         return 1;
     } else if (strcmp(instruction->code, "storeAI") == 0) {
-        suffix = get_correct_suffix(instruction->op1, -1);
+        suffix = get_correct_suffix(instruction->op1, instruction->op1_type, -1, OT_REG);
         if (instruction->op3 != 0) {
             printf("\tmov%c\t%s, -%d(%s)\n", suffix, asm_op1, instruction->op3, asm_op2);
         } else {
@@ -301,8 +301,9 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
 int print_general_instruction(instruction_entry_t *instruction_lst) {
     instruction_t *instruction = instruction_lst->entry;
 
-    char asm_code[10], asm_op1[10], asm_op2[10];
+    char asm_code[10], asm_op1[10], asm_op2[10], asm_op3[10];
     int is_comutative = 0;
+    int is_three_op = 0;
 
     if (strncmp(instruction->code, "add", 3) == 0) {
         strcpy(asm_code, "add");
@@ -310,8 +311,9 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
     } else if (strncmp(instruction->code, "sub", 3) == 0) {
         strcpy(asm_code, "sub");
     } else if (strncmp(instruction->code, "mult", 4) == 0) {
-        strcpy(asm_code, "imult");
+        strcpy(asm_code, "imul");
         is_comutative = 1;
+        is_three_op = 1;
     } else if (strncmp(instruction->code, "div", 3) == 0) {
         strcpy(asm_code, "idiv");
     } else if (strncmp(instruction->code, "and", 3) == 0) {
@@ -333,12 +335,27 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
         return 0;
     }
 
-    if (instruction->op1 == instruction->op3) {
+    if (is_three_op == 1) {
+        // o x86 suporta essa instrução como uma instrução de 3 operandos, é tivial
+        print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+        print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
+        print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op3);
+
+        char suffix = get_correct_suffix(instruction->op1, instruction->op1_type, instruction->op2, instruction->op2_type);
+        
+        if (instruction->op2_type == OT_IMED) {
+            printf("\t%s%c\t%s, %s, %s\n", asm_code, suffix, asm_op2, asm_op1, asm_op3);
+        } else {
+            printf("\t%s%c\t%s, %s, %s\n", asm_code, suffix, asm_op1, asm_op2, asm_op3);
+        }
+    
+        return 1;
+    } else if (instruction->op1 == instruction->op3) {
         // essas operações não importa a ordem, então da pra executar
         // em uma instrução apenas
         print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
         print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
-        char suffix = get_correct_suffix(instruction->op1, instruction->op2);
+        char suffix = get_correct_suffix(instruction->op1, instruction->op1_type, instruction->op2, instruction->op2_type);
 
         printf("\t%s%c\t%s, %s\n", asm_code, suffix, asm_op2, asm_op1);
     
@@ -348,7 +365,7 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
         // a conversão se torna bem mais fácil porque é 1:1
         print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
         print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
-        char suffix = get_correct_suffix(instruction->op1, instruction->op2);
+        char suffix = get_correct_suffix(instruction->op1, instruction->op1_type, instruction->op2, instruction->op2_type);
 
         printf("\t%s%c\t%s, %s\n", asm_code, suffix, asm_op1, asm_op2);
         
@@ -361,15 +378,15 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
         print_instruction_parameter(REG_EFE, OT_REG, asm_op2);
         
         print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op1);
-        suffix = get_correct_suffix(REG_EFE, instruction->op2);
+        suffix = get_correct_suffix(REG_EFE, OT_REG, instruction->op2, instruction->op2_type);
         printf("\tmov%c\t%s, %s\n", suffix, asm_op1, asm_op2);
 
         print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
-        suffix = get_correct_suffix(REG_EFE, instruction->op1);
+        suffix = get_correct_suffix(REG_EFE, OT_REG, instruction->op1, instruction->op1_type);
         printf("\t%s%c\t%s, %s\n", asm_code, suffix, asm_op1, asm_op2);
 
         print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op1);
-        suffix = get_correct_suffix(REG_EFE, instruction->op3);
+        suffix = get_correct_suffix(REG_EFE, OT_REG, instruction->op3, instruction->op3_type);
         printf("\tmov%c\t%s, %s\n", suffix, asm_op2, asm_op1);
 
         return 1;
