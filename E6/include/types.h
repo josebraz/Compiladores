@@ -142,6 +142,7 @@ typedef struct __hashmap_value {
     enum nature_type nature;
     int men_size;            // quanto a variável ocupa, para funções é a memória de todas as variáveis
     int men_offset;
+    int fun_call_other_fun;
     list_t *args;
     int fun_label;
 } hashmap_value_t;

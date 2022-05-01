@@ -89,6 +89,7 @@ hashmap_value_t *create_hashmap_value(
     value->type = type;
     value->args = args;
     value->fun_label = -1;
+    value->fun_call_other_fun = 0;
     value->men_offset = 0;
 
     return value;

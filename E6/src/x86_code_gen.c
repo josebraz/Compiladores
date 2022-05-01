@@ -142,13 +142,17 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         for (int i = 0; i < 3; i++) {
             current = current->next;
         }
-        // estamos na instrução de deslocamento da pilha
-        // precisa ser um múltiplo de 16 e um sub, exemplo: subq $32, %rsp
-        int offset = current->entry->op2;
-        offset += 16 - (offset % 16);
-        current->entry->op2 = offset;
-        strcpy(current->entry->code, "subI");
-        return 3 + print_general_instruction(current);
+        if (fun_entry->fun_call_other_fun >= 1) {
+            // estamos na instrução de deslocamento da pilha
+            // precisa ser um múltiplo de 16 e um sub, exemplo: subq $32, %rsp
+            int offset = current->entry->op2;
+            offset += 16 - (offset % 16);
+            current->entry->op2 = offset;
+            strcpy(current->entry->code, "subI");
+            return 3 + print_general_instruction(current);
+        } else {
+            return 3;
+        }
     } else if (mark_type == CODE_MARK_FUN_END) {
         char *fun_name = instruction->mark_property;
         hashmap_value_t *fun_entry = hashmap_get(global_scope, fun_name);
@@ -162,17 +166,26 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         // addI rpc, 3 => r0
         // storeAI r0 => rsp, 0
         // jumpI => L0   
+        // loadAI rsp, 12 => r0
+        instruction_t *load_ret_inst = instruction_lst->next->next->next->next->entry;
         printf("\tcall\t%s\n", fun_name);
-        return 4; // marcação + add rpc + store ret + jump
+        if (load_ret_inst->op3 != 0) {
+            // se o retorno já está no op3 não precisa colocar
+            char asm_op1[10];
+            print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op1);
+            printf("\tmovl\t%%eax, %s\n", asm_op1);
+        }
+        return 5; // marcação + add rpc + store ret + jump + load_ret
     } else if (mark_type == CODE_MARK_FUN_RET_END) {
         // Caso de encerramento de uma função geral
         printf("\t.cfi_endproc\n");
         return 1;
     } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE_END) {
         char *fun_name = instruction->mark_property;
-        if (strcmp(fun_name, "main") == 0) {
+        hashmap_value_t *fun_entry = hashmap_get(global_scope, fun_name);
+        if (fun_entry->fun_call_other_fun >= 1) {
             // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
-            // halt                          // Termina o programa
+            // halt
             printf("\tleave\n");
             printf("\t.cfi_def_cfa 7, 8\n");
             printf("\tret\n");
@@ -190,6 +203,17 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             printf("\tret\n");
             return 7;
         }
+    } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE_START) {
+        // MARK: CODE_MARK_FUN_RETURN_VALUE_START, p1 = 0, p2 = 0
+        // storeAI r0 => rfp, 12         // Escreve o valor de retorno na pilha
+        instruction_t *store_inst = instruction_lst->next->entry;
+        if (store_inst->op1 != 0) {
+            // se o valor de retorno já está no eax não precisamos colocar
+            char asm_op1[10];
+            print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+            printf("\tmovl\t%s, %%eax\n", asm_op1);
+        }
+        return 2;
     } else if (mark_type == CODE_MARK_FUN_CALL_START) {
         // MARK: CODE_MARK_FUN_CALL_START, p1 = 0, p2 = 0// Início do retorno
         // storeAI rsp => rsp, 4         // Inicio da chamada de aaaaa()
@@ -197,7 +221,6 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         return 3;
     } else if (mark_type == CODE_MARK_SAVE_REGS_START || 
                mark_type == CODE_MARK_SAVE_REGS_END || 
-               mark_type == CODE_MARK_FUN_RETURN_VALUE_START || 
                mark_type == CODE_MARK_FUN_CALL_END ||
                mark_type == CODE_MARK_LOAD_REGS_START || 
                mark_type == CODE_MARK_LOAD_REGS_END ||
@@ -275,7 +298,7 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         return 1;
     } else if (strcmp(instruction->code, "loadAI") == 0) {
         suffix = get_correct_suffix(-1, OT_REG, instruction->op3, instruction->op3_type);
-        int offset = -(instruction->op2 - 8); // rsp, rfp e end retorno vão estar na pilha
+        int offset = -instruction->op2 + 12; // rsp, rfp e end retorno vão estar na pilha
         if (offset != 0) {
             printf("\tmov%c\t%d(%s), %s\n", suffix, offset, asm_op1, asm_op3);
         } else {
@@ -302,7 +325,7 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
             }
             instruction_entry_t *next_copy_lst = instr_lst_create_new(next_copy);
 
-            int result = print_general_instruction(next_copy_lst);
+            int result = print_assembly_instruction(next_copy_lst);
             free(next_copy);
             free(next_copy_lst);
 
@@ -325,7 +348,7 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         return 1;
     } else if (strcmp(instruction->code, "storeAI") == 0) {
         suffix = get_correct_suffix(instruction->op1, instruction->op1_type, -1, OT_REG);
-        int offset = -(instruction->op3 - 8); // rsp, rfp e end retorno vão estar na pilha
+        int offset = -instruction->op3 + 12; // rsp, rfp e end retorno vão estar na pilha
         if (offset != 0) {
             printf("\tmov%c\t%s, %d(%s)\n", suffix, asm_op1, offset, asm_op2);
         } else {

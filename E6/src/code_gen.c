@@ -267,7 +267,10 @@ void generate_fun_decl(node *fun) {
     // If this function has childrens
     if (fun->nodes[0] != NULL)
     {
-        instruction_entry_t *update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
+        instruction_entry_t *update_rsp = NULL;
+        if (fun_decl->fun_call_other_fun >= 1) {
+            update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
+        }
 
         instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START, 0, 0, fun_name);
         instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END, 0, 0, fun_name);
@@ -309,10 +312,12 @@ void generate_fun_decl(node *fun) {
         comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
 
         // gravamos os registradores usados no início da função
-        update_rsp->next = NULL;
-        fun->nodes[0]->code->previous = NULL;
-        instr_lst_join(3, update_rsp, store_used_reg, fun->nodes[0]->code);
-        update_rsp->entry->op2 = rsp_gap;
+        if (update_rsp != NULL) {
+            update_rsp->next = NULL;
+            fun->nodes[0]->code->previous = NULL;
+            instr_lst_join(3, update_rsp, store_used_reg, fun->nodes[0]->code);
+            update_rsp->entry->op2 = rsp_gap;
+        }
 
         if (strcmp(fun_name, "main") != 0) {
             insert_restore_reg_code(fun->nodes[0], load_used_reg);
@@ -324,15 +329,18 @@ void generate_fun_decl(node *fun) {
 }
 
 void generate_fun_call(node *s, node *params) {
-    char *fun_name = (char *) s->value;
+    char *target_fun_name = (char *) s->value;
+    char *current_fun_name = function_scope()->label;
     hashmap_t *global_scope;
-    hashmap_value_t *fun_decl = find_declaration(fun_name, &global_scope);
+    hashmap_value_t *target_fun_decl = find_declaration(target_fun_name, &global_scope);
+    hashmap_value_t *current_fun_decl = find_declaration(current_fun_name, &global_scope);
 
-    instruction_entry_t *start_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_START, 0, 0, fun_name);
-    instruction_entry_t *end_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_END, 0, 0, fun_name);
-    instruction_entry_t *call_jump_mark = generate_mark(CODE_MARK_FUN_CALL_JUMP, 0, 0, fun_name);
+    instruction_entry_t *start_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_START, 0, 0, target_fun_name);
+    instruction_entry_t *end_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_END, 0, 0, target_fun_name);
+    instruction_entry_t *call_jump_mark = generate_mark(CODE_MARK_FUN_CALL_JUMP, 0, 0, target_fun_name);
     instruction_entry_t *store_rsp = generate_instructionS("storeAI", RSP, RSP, 4);
     instruction_entry_t *store_rfp = generate_instructionS("storeAI", RFP, RSP, 8);
+    current_fun_decl->fun_call_other_fun += 1;
 
     // para cada parametro da função cria um store
     instruction_entry_t *param_lst = NULL;
@@ -353,15 +361,15 @@ void generate_fun_call(node *s, node *params) {
     int ret_reg = next_reg();
     instruction_entry_t *cal_ret_end = generate_instructionI("addI", RPC, 3, ret_reg);
     instruction_entry_t *store_ret_end = generate_instructionS("storeAI", ret_reg, RSP, 0);
-    instruction_entry_t *jump_fun = generate_jumpI(fun_decl->fun_label);
+    instruction_entry_t *jump_fun = generate_jumpI(target_fun_decl->fun_label);
 
     int ret_value_reg = next_reg();
     instruction_entry_t *load_return_value = generate_instructionI("loadAI", RSP, 12, ret_value_reg);
     load_return_value->entry->reg_result = ret_value_reg;
 
-    comment_instruction(store_rsp, "Inicio da chamada de %s()", fun_name);
-    comment_instruction(load_return_value, "Carrega o valor de retorno de %s()", fun_name);
-    comment_instruction(jump_fun, "Salta para a função %s()", fun_name);
+    comment_instruction(store_rsp, "Inicio da chamada de %s()", target_fun_name);
+    comment_instruction(load_return_value, "Carrega o valor de retorno de %s()", target_fun_name);
+    comment_instruction(jump_fun, "Salta para a função %s()", target_fun_name);
 
     s->reg_result = ret_value_reg;
     s->code = instr_lst_join(10, start_fun_call_mark, store_rsp, store_rfp, 
