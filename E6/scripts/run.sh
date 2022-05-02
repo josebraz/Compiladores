@@ -31,5 +31,5 @@ cd ../tests
 ./test 
 echo $?
 
-rm *.s *.o
+#rm *.s *.o
 
