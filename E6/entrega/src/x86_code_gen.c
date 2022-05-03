@@ -21,6 +21,7 @@ Grupo: V
 
 #define REG_NUM 16
 #define REG_EFE 11 // registrador usado para os calculos intermediários
+#define STACK_OFFSET 12
 
 
 /*
@@ -154,7 +155,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         if (fun_entry->fun_call_other_fun >= 1) {
             // estamos na instrução de deslocamento da pilha
             // precisa ser um múltiplo de 16 e um sub, exemplo: subq $32, %rsp
-            int offset = current->entry->op2;
+            int offset = current->entry->op2 - STACK_OFFSET;
             offset += 16 - (offset % 16);
             current->entry->op2 = offset;
             strcpy(current->entry->code, "subI");
@@ -309,7 +310,7 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         return 1;
     } else if (strcmp(instruction->code, "loadAI") == 0) {
         suffix = get_correct_suffix(-1, OT_REG, instruction->op3, instruction->op3_type);
-        int offset = -instruction->op2 + 12; // rsp, rfp e end retorno vão estar na pilha
+        int offset = -instruction->op2 + STACK_OFFSET; // rsp, rfp e end retorno vão estar na pilha
         if (offset != 0) {
             printf("\tmov%c\t%d(%s), %s\n", suffix, offset, asm_op1, asm_op3);
         } else {
@@ -359,11 +360,13 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         return 1;
     } else if (strcmp(instruction->code, "storeAI") == 0) {
         suffix = get_correct_suffix(instruction->op1, instruction->op1_type, -1, OT_REG);
-        int offset = -instruction->op3 + 12; // rsp, rfp e end retorno vão estar na pilha
+        int offset = -instruction->op3 + STACK_OFFSET; // rsp, rfp e end retorno vão estar na pilha
         if (instruction->op2_type == OT_REG && instruction->op2 == RBSS) {
             // Storing a global variable
             // printf("\t# Debug: Global variable store\n");
             // How to retrieve the name?
+            printf("\tmov%c\t%s, %d(%s)\n", suffix, asm_op1, offset, asm_op2);
+        } else if (offset != 0) {
             printf("\tmov%c\t%s, %d(%s)\n", suffix, asm_op1, offset, asm_op2);
         } else if (offset != 0) {
             printf("\tmov%c\t%s, %d(%s)\n", suffix, asm_op1, offset, asm_op2);
