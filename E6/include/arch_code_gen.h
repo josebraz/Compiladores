@@ -21,6 +21,8 @@ int print_jump_instruction(instruction_entry_t *instruction_lst);
 
 int print_general_instruction(instruction_entry_t *instruction_lst);
 
+int print_compare_branch_instruction(instruction_entry_t *instruction_lst);
+
 int print_mem_instruction(instruction_entry_t *instruction_lst);
 
 int print_mark_instruction(instruction_entry_t *instruction_lst);

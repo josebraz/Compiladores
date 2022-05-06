@@ -97,6 +97,10 @@ int print_assembly_instruction(instruction_entry_t *instruction_lst) {
     if (temp > 0) {
         return temp;
     }
+    temp = print_compare_branch_instruction(instruction_lst);
+    if (temp > 0) {
+        return temp;
+    }
     temp = print_general_instruction(instruction_lst);
     if (temp > 0) {
         return temp;
@@ -105,8 +109,7 @@ int print_assembly_instruction(instruction_entry_t *instruction_lst) {
     if (temp > 0) {
         return temp;
     }
-    // temp = print_conver_fail(instruction_lst);
-    return 1;
+    return 0;
 }
 
 void print_fun_header(hashmap_value_t *fun_value, char *fun_name) {
@@ -334,6 +337,7 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
                 next_copy->op2 = imediate_value;
             }
             instruction_entry_t *next_copy_lst = instr_lst_create_new(next_copy);
+            next_copy_lst->next = instruction_lst->next->next;
 
             int result = print_assembly_instruction(next_copy_lst);
             free(next_copy);
@@ -369,6 +373,45 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         return 1;
     }
 
+    return 0;
+}
+
+int print_compare_branch_instruction(instruction_entry_t *instruction_lst) {
+    instruction_t *cmp_instr = instruction_lst->entry;
+    if (strncmp(cmp_instr->code, "cmp", 3) == 0 && instruction_lst->next != NULL) {
+        instruction_t *branch_instr = instruction_lst->next->entry;
+        if (branch_instr == NULL || strcmp(branch_instr->code, "cbr") != 0) {
+            return 0; // comparação sem branch? estão malucos
+        }
+        
+        char asm_op1[10], asm_op2[10];
+        print_instruction_parameter(cmp_instr->op1, cmp_instr->op1_type, asm_op1);
+        print_instruction_parameter(cmp_instr->op2, cmp_instr->op2_type, asm_op2);
+        if (cmp_instr->op2_type == OT_IMED) {
+            printf("\tcmpl\t%s, %s\n", asm_op2, asm_op1);
+        } else {
+            printf("\tcmpl\t%s, %s\n", asm_op1, asm_op2);
+        }
+
+        print_instruction_parameter(branch_instr->op3, branch_instr->op3_type, asm_op1);
+
+        // em x86 nos pulamos caso negativo e seguimos a execeção caso 
+        // positivo, por isso tem que negar o jump com relação ao teste
+        if (strcmp(cmp_instr->code, "cmp_LT") == 0) {
+            printf("\tjge  \t%s\n", asm_op1);
+        } else if (strcmp(cmp_instr->code, "cmp_GT") == 0) {
+            printf("\tjle  \t%s\n", asm_op1);
+        } else if (strcmp(cmp_instr->code, "cmp_LE") == 0) {
+            printf("\tjg \t%s\n", asm_op1);
+        } else if (strcmp(cmp_instr->code, "cmp_GE") == 0) {
+            printf("\tjl \t%s\n", asm_op1);
+        } else if (strcmp(cmp_instr->code, "cmp_NE") == 0) {
+            printf("\tje \t%s\n", asm_op1);
+        } else if (strcmp(cmp_instr->code, "cmp_EQ") == 0) {
+            printf("\tjne \t%s\n", asm_op1);
+        }
+        return 3; // cmp + cbr + label do caso true
+    }
     return 0;
 }
 
@@ -469,9 +512,11 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
 
 
 void print_instruction_parameter(int op, int op_type, char *dest) {
-    if (op_type == OT_IMED)
+    if (op_type == OT_IMED) {
         sprintf(dest, "$%d", op);
-    else {
+    } else if (op_type == OT_LABEL) {
+        sprintf(dest, ".L%d", op);
+    } else {
         switch (op) {
         case RBSS:
             strcpy(dest, "%rip");
