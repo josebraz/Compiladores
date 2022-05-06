@@ -124,6 +124,7 @@ void print_fun_header(hashmap_value_t *fun_value, char *fun_name) {
 }
 
 void print_fun_footer(hashmap_value_t *fun_value, char *fun_name) {
+    printf("\t.cfi_endproc\n");
     printf(".LFE%d:\n", fun_value->fun_label);
     printf("\t.size\t%s, .-%s\n", fun_name, fun_name);
 }
@@ -186,10 +187,6 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             printf("\tmovl\t%%eax, %s\n", asm_op1);
         }
         return 5; // marcação + add rpc + store ret + jump + load_ret
-    } else if (mark_type == CODE_MARK_FUN_RET_END) {
-        // Caso de encerramento de uma função geral
-        printf("\t.cfi_endproc\n");
-        return 1;
     } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE_END) {
         char *fun_name = instruction->mark_property;
         hashmap_value_t *fun_entry = hashmap_get(global_scope, fun_name);
@@ -199,7 +196,6 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             printf("\tleave\n");
             printf("\t.cfi_def_cfa 7, 8\n");
             printf("\tret\n");
-            printf("\t.cfi_endproc\n");
             return 2; // mark value_end + halt + mark ret_end
         } else {
             // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
@@ -212,7 +208,6 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             printf("\tpopq\t%%rbp\n");
             printf("\t.cfi_def_cfa 7, 8\n");
             printf("\tret\n");
-            printf("\t.cfi_endproc\n");
             return 7;
         }
     } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE_START) {
@@ -236,7 +231,8 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
                mark_type == CODE_MARK_FUN_CALL_END ||
                mark_type == CODE_MARK_LOAD_REGS_START || 
                mark_type == CODE_MARK_LOAD_REGS_END ||
-               mark_type == CODE_MARK_FUN_RET_START) 
+               mark_type == CODE_MARK_FUN_RET_START ||
+               mark_type == CODE_MARK_FUN_RET_END) 
     {
         // Só consome, achoo que não vamos precisar
         return 1;
@@ -311,7 +307,9 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
     } else if (strcmp(instruction->code, "loadAI") == 0) {
         suffix = get_correct_suffix(-1, OT_REG, instruction->op3, instruction->op3_type);
         int offset = -instruction->op2 + STACK_OFFSET; // rsp, rfp e end retorno vão estar na pilha
-        if (offset != 0) {
+        if (instruction->op1_type == OT_REG && instruction->op1 == RBSS) {
+            printf("\tmov%c\t%s(%s), %s\n", suffix, instruction->mark_property, asm_op1, asm_op3);
+        } else if (offset != 0) {
             printf("\tmov%c\t%d(%s), %s\n", suffix, offset, asm_op1, asm_op3);
         } else {
             printf("\tmov%c\t(%s), %s\n", suffix, asm_op1, asm_op3);
@@ -362,15 +360,10 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         suffix = get_correct_suffix(instruction->op1, instruction->op1_type, -1, OT_REG);
         int offset = -instruction->op3 + STACK_OFFSET; // rsp, rfp e end retorno vão estar na pilha
         if (instruction->op2_type == OT_REG && instruction->op2 == RBSS) {
-            // Storing a global variable
-            // printf("\t# Debug: Global variable store\n");
-            // How to retrieve the name?
-            printf("\tmov%c\t%s, %d(%s)\n", suffix, asm_op1, offset, asm_op2);
+            printf("\tmov%c\t%s, %s(%s)\n", suffix, asm_op1, instruction->mark_property, asm_op2);
         } else if (offset != 0) {
             printf("\tmov%c\t%s, %d(%s)\n", suffix, asm_op1, offset, asm_op2);
-        } else if (offset != 0) {
-            printf("\tmov%c\t%s, %d(%s)\n", suffix, asm_op1, offset, asm_op2);
-        }else {
+        } else {
             printf("\tmov%c\t%s, (%s)\n", suffix, asm_op1, asm_op2);
         }
         return 1;

@@ -110,6 +110,7 @@ void generate_var_load(node *n) {
     n->reg_result = next_reg();
     instruction_entry_t *store_instr = generate_instructionI("loadAI", reg, offset, n->reg_result);
     store_instr->entry->reg_result = n->reg_result;
+    strcpy(store_instr->entry->mark_property, ident);
     
     comment_instruction(store_instr, "Carrega variável %s", ident);
 
@@ -132,6 +133,7 @@ void generate_var_assignment(char *ident, node *b, node *init) {
     get_var_mem_loc(ident, &reg, &offset);
     instruction_entry_t *store_instr = generate_instructionS("storeAI", init->reg_result, reg, offset);
     comment_instruction(store_instr, "Grava variável %s", ident);
+    strcpy(store_instr->entry->mark_property, ident);
 
     b->code = instr_lst_join(2, init->code, store_instr);
 }
