@@ -209,3 +209,19 @@ instruction_entry_t *instr_lst_remove_mark_interval(
 
     return start;
 }
+
+int instr_lst_end_with_code(instruction_entry_t *inst, char *code) {
+    instruction_entry_t *current = inst;
+    if (current == NULL) {
+        return 0;
+    }
+    // navega até o final da lista
+    while (current->next != NULL) {
+        current = current->next;
+    }
+    if (strcmp(current->entry->code, code) == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}

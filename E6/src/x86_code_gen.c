@@ -186,7 +186,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         if (load_ret_inst->op3 != 0) {
             // se o retorno já está no op3 não precisa colocar
             char asm_op1[10];
-            print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op1);
+            print_instruction_parameter(load_ret_inst->op3, load_ret_inst->op3_type, asm_op1);
             printf("\tmovl\t%%eax, %s\n", asm_op1);
         }
         return 5; // marcação + add rpc + store ret + jump + load_ret
@@ -194,12 +194,23 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         char *fun_name = instruction->mark_property;
         hashmap_value_t *fun_entry = hashmap_get(global_scope, fun_name);
         if (fun_entry->fun_call_other_fun >= 1) {
-            // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
-            // halt
             printf("\tleave\n");
             printf("\t.cfi_def_cfa 7, 8\n");
             printf("\tret\n");
-            return 2; // mark value_end + halt + mark ret_end
+            if (strcmp(fun_name, "main") == 0) {
+                // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
+                // halt
+                return 2;
+            } else {
+                // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
+                // loadAI rfp, 4 => r0           // Carrega ultimo RSP
+                // i2i r0 => rsp
+                // loadAI rfp, 8 => r0           // Carrega ultimo RFP
+                // i2i r0 => rfp
+                // loadAI rfp, 0 => r0           // Carrega end de retorno
+                // jump => r0
+                return 7;
+            }
         } else {
             // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
             // loadAI rfp, 4 => r0           // Carrega ultimo RSP
@@ -229,6 +240,22 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         // storeAI rsp => rsp, 4         // Inicio da chamada de aaaaa()
         // storeAI rfp => rsp, 8
         return 3;
+    } else if (mark_type == CODE_MARK_PUTING_PARAMS_START) {
+        // lista de parametros (storeAI r0 => rsp, 16) ...
+        char asm_op1[10], asm_op2[10];
+        int args = 0;
+        instruction_entry_t *current = instruction_lst->next;
+        while (current != NULL && current->entry->op1 != CODE_MARK_PUTING_PARAMS_END) {
+            instruction = current->entry;
+            int offset = -instruction->op3 + STACK_OFFSET - 16; 
+            print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+            print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
+
+            printf("\tmovl\t%s, %d(%s)\n", asm_op1, offset, asm_op2);
+            current = current->next;
+            args++;
+        }
+        return args + 2; // puting start + puting end
     } else if (mark_type == CODE_MARK_SAVE_REGS_START || 
                mark_type == CODE_MARK_SAVE_REGS_END || 
                mark_type == CODE_MARK_FUN_CALL_END ||
@@ -383,6 +410,7 @@ int print_compare_branch_instruction(instruction_entry_t *instruction_lst) {
         if (branch_instr == NULL || strcmp(branch_instr->code, "cbr") != 0) {
             return 0; // comparação sem branch? estão malucos
         }
+        instruction_t *label_instr = instruction_lst->next->next->entry;
         
         char asm_op1[10], asm_op2[10];
         print_instruction_parameter(cmp_instr->op1, cmp_instr->op1_type, asm_op1);
@@ -393,24 +421,41 @@ int print_compare_branch_instruction(instruction_entry_t *instruction_lst) {
             printf("\tcmpl\t%s, %s\n", asm_op1, asm_op2);
         }
 
-        print_instruction_parameter(branch_instr->op3, branch_instr->op3_type, asm_op1);
-
-        // em x86 nos pulamos caso negativo e seguimos a execeção caso 
+        // em x86 nos pulamos caso negativo e seguimos a execução caso 
         // positivo, por isso tem que negar o jump com relação ao teste
-        if (strcmp(cmp_instr->code, "cmp_LT") == 0) {
-            printf("\tjge  \t%s\n", asm_op1);
-        } else if (strcmp(cmp_instr->code, "cmp_GT") == 0) {
-            printf("\tjle  \t%s\n", asm_op1);
-        } else if (strcmp(cmp_instr->code, "cmp_LE") == 0) {
-            printf("\tjg \t%s\n", asm_op1);
-        } else if (strcmp(cmp_instr->code, "cmp_GE") == 0) {
-            printf("\tjl \t%s\n", asm_op1);
-        } else if (strcmp(cmp_instr->code, "cmp_NE") == 0) {
-            printf("\tje \t%s\n", asm_op1);
-        } else if (strcmp(cmp_instr->code, "cmp_EQ") == 0) {
-            printf("\tjne \t%s\n", asm_op1);
+        if (label_instr->op1_type == OT_LABEL && label_instr->op1 == branch_instr->op2) {
+            print_instruction_parameter(branch_instr->op3, branch_instr->op3_type, asm_op1);
+            if (strcmp(cmp_instr->code, "cmp_LT") == 0) {
+                printf("\tjge  \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_GT") == 0) {
+                printf("\tjle  \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_LE") == 0) {
+                printf("\tjg \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_GE") == 0) {
+                printf("\tjl \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_NE") == 0) {
+                printf("\tje \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_EQ") == 0) {
+                printf("\tjne \t%s\n", asm_op1);
+            }
+        } else {
+            print_instruction_parameter(branch_instr->op2, branch_instr->op2_type, asm_op1);
+            if (strcmp(cmp_instr->code, "cmp_LT") == 0) {
+                printf("\tjl  \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_GT") == 0) {
+                printf("\tjg  \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_LE") == 0) {
+                printf("\tjle \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_GE") == 0) {
+                printf("\tjge \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_NE") == 0) {
+                printf("\tjne \t%s\n", asm_op1);
+            } else if (strcmp(cmp_instr->code, "cmp_EQ") == 0) {
+                printf("\tje \t%s\n", asm_op1);
+            }
         }
-        return 3; // cmp + cbr + label do caso true
+
+        return 2; // cmp + cbr
     }
     return 0;
 }

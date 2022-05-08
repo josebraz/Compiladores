@@ -34,6 +34,8 @@ instruction_entry_t *instr_lst_remove_mark_interval(
     int end_mark
 );
 
+int instr_lst_end_with_code(instruction_entry_t *inst, char *code);
+
 #endif
 
 

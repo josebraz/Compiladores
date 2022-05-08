@@ -31,6 +31,8 @@ Grupo: V
 #define CODE_MARK_FUN_CALL_JUMP             13
 #define CODE_MARK_FUN_RETURN_VALUE_START    14
 #define CODE_MARK_FUN_RETURN_VALUE_END      15
+#define CODE_MARK_PUTING_PARAMS_START       16
+#define CODE_MARK_PUTING_PARAMS_END         17
 
 
 int next_reg();

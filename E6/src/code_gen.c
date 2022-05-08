@@ -146,16 +146,14 @@ void generate_fun_return(node *s, node *e) {
     comment_instruction(e->code, "Início do retorno");
     comment_instruction(store_result, "Escreve o valor de retorno na pilha");
 
-    instruction_entry_t *ret_start_mark = generate_mark(CODE_MARK_FUN_RET_START, 0, 0, fun_scope->label);
-    instruction_entry_t *ret_end_mark = generate_mark(CODE_MARK_FUN_RET_END, 0, 0, fun_scope->label);
     instruction_entry_t *fun_return_value_mark = generate_mark(CODE_MARK_FUN_RETURN_VALUE_START, 0, 0, fun_scope->label);
     instruction_entry_t *fun_return_value_mark_end = generate_mark(CODE_MARK_FUN_RETURN_VALUE_END, 0, 0, fun_scope->label);
 
     if (strcmp(fun_scope->label, "main") == 0) {
         instruction_entry_t *instr_halt = generate_instruction("halt", EMPTY, EMPTY, EMPTY);
         comment_instruction(instr_halt, "Termina o programa");
-        s->code = instr_lst_join(7, ret_start_mark, e->code, fun_return_value_mark,
-                                    store_result, fun_return_value_mark_end, instr_halt, ret_end_mark);
+        s->code = instr_lst_join(5, e->code, fun_return_value_mark,
+                                    store_result, fun_return_value_mark_end, instr_halt);
     } else {
         int rsp_reg = next_reg();
         int rfp_reg = next_reg();
@@ -177,16 +175,16 @@ void generate_fun_return(node *s, node *e) {
         comment_instruction(load_last_rsp, "Carrega ultimo RSP");
         comment_instruction(load_last_rfp, "Carrega ultimo RFP");
 
-        s->code = instr_lst_join(12, ret_start_mark, e->code, fun_return_value_mark, store_result,
+        s->code = instr_lst_join(10, e->code, fun_return_value_mark, store_result,
                                  fun_return_value_mark_end, load_last_rsp, copy_rsp, 
                                  load_last_rfp, copy_rfp, 
-                                 load_ret_end, jump_ret, ret_end_mark);
+                                 load_ret_end, jump_ret);
     }
 }
 
 void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
-    if (strcmp(n->label, "return") == 0) {
-        instruction_entry_t *current = n->code;
+    instruction_entry_t *current = n->code;
+    while (current != NULL) {
         while (current != NULL && 
                 (current->entry->op1 != CODE_MARK_FUN_CALL_END && current->entry->op1 != OT_MARK)) {
             current = current->next;
@@ -224,13 +222,7 @@ void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
                 }
                 instr_lst_join(2, copy, current);
             }
-        }
-    } else {
-        for (int i = 0; i < n->size; i++) {
-            insert_restore_reg_code(n->nodes[i], restore_code);
-        }
-        if (n->next != NULL) {
-            insert_restore_reg_code(n->next, restore_code);
+            current = current->next;
         }
     }
 }
@@ -372,6 +364,7 @@ void generate_fun_call(node *s, node *params) {
     if (params != NULL) {
         int param_offset = 16;
         param_lst = params->code;
+        param_lst = instr_lst_join(2, param_lst, generate_mark(CODE_MARK_PUTING_PARAMS_START, 0, 0, target_fun_name));
         node *p = params;
         while (p != NULL) {
             instruction_entry_t *p_store = generate_instructionS("storeAI", p->reg_result, RSP, param_offset);
@@ -380,6 +373,7 @@ void generate_fun_call(node *s, node *params) {
             param_offset += 4;
             p = p->next;
         }
+        param_lst = instr_lst_join(2, param_lst, generate_mark(CODE_MARK_PUTING_PARAMS_END, 0, 0, target_fun_name));
     }
 
     // prepara o endereço de retorno que é após essas 2 instr e do jump
@@ -468,9 +462,17 @@ void generate_if(node *b, node *e, node *b_true, node *b_false) {
         bool_lst_remenda(e->true_list, label_true);
         bool_lst_remenda(e->false_list, label_false);
 
-        b->code = instr_lst_join(7, e->code, instr_true_label, 
-                                    b_true->code, jump_end, instr_false_label, 
-                                    b_false->code, instr_end_label);
+        if (instr_lst_end_with_code(b_true->code, "jump") == 1) {
+            // já tem um salto, nao precisa do outro
+            b->code = instr_lst_join(6, e->code, instr_true_label, 
+                                        b_true->code, instr_false_label, 
+                                        b_false->code, instr_end_label);
+        } else {
+            b->code = instr_lst_join(7, e->code, instr_true_label, 
+                                        b_true->code, jump_end, instr_false_label, 
+                                        b_false->code, instr_end_label);
+        }
+        
     } else {
         bool_lst_remenda(e->true_list, label_true);
         bool_lst_remenda(e->false_list, label_end);
@@ -613,7 +615,7 @@ int print_mark(instruction_t *inst) {
         char_counter += printf("CODE_MARK_FUN_CALL_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_CALL_JUMP:
-        char_counter += printf("FUN CALL JUMP, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        char_counter += printf("CODE_MARK_FUN_CALL_JUMP, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_RET_START:
         char_counter += printf("CODE_MARK_FUN_RET_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
@@ -626,6 +628,12 @@ int print_mark(instruction_t *inst) {
         break;
     case CODE_MARK_FUN_RETURN_VALUE_END:
         char_counter += printf("CODE_MARK_FUN_RETURN_VALUE_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_PUTING_PARAMS_START:
+        char_counter += printf("CODE_MARK_PUTING_PARAMS_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_PUTING_PARAMS_END:
+        char_counter += printf("CODE_MARK_PUTING_PARAMS_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     default:
         break;
