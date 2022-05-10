@@ -28,11 +28,12 @@ Grupo: V
 #define CODE_MARK_FUN_RET_END               10
 #define CODE_MARK_FUN_CALL_START            11
 #define CODE_MARK_FUN_CALL_END              12
-#define CODE_MARK_FUN_CALL_JUMP             13
-#define CODE_MARK_FUN_RETURN_VALUE_START    14
-#define CODE_MARK_FUN_RETURN_VALUE_END      15
-#define CODE_MARK_PUTING_PARAMS_START       16
-#define CODE_MARK_PUTING_PARAMS_END         17
+#define CODE_MARK_FUN_CALL_JUMP_START       13
+#define CODE_MARK_FUN_CALL_JUMP_END         14
+#define CODE_MARK_FUN_RETURN_VALUE_START    15
+#define CODE_MARK_FUN_RETURN_VALUE_END      16
+#define CODE_MARK_PUTING_PARAMS_START       17
+#define CODE_MARK_PUTING_PARAMS_END         18
 
 
 int next_reg();

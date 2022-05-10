@@ -29,6 +29,10 @@ typedef struct __graph {
     char **edges;
 } graph_t;
 
+int compute_all_reg_live(instruction_entry_t *code, var_live **lst_pointer);
+
+int compute_live_out(instruction_entry_t *code);
+
 /**
  * @brief Printa o grafo na saída padrão
  * 

@@ -33,6 +33,9 @@ int get_live_interval(int reg, instruction_entry_t *instr, instruction_entry_t *
                 (current->entry->op2 == reg && current->entry->op2_type == OT_REG)) {
                     f_end = current;
             }
+            if (current->entry->reg_result == reg) {
+                break;
+            }
         }
         current = current->next;
     }
@@ -50,8 +53,33 @@ int get_live_interval(int reg, instruction_entry_t *instr, instruction_entry_t *
     return f_start != NULL && f_end != NULL;
 }
 
+int count_regs(instruction_entry_t *code) {
+    int counter = 0;
+    char* counted = (char *) calloc(1000, sizeof(char));
+
+    instruction_entry_t *current = code;
+    while (current != NULL) {
+        instruction_t *instr = current->entry;
+        if (instr->op1_type == OT_REG && instr->op1 >= 0 && counted[instr->op1] == 0) { // não contamos esse
+            counted[instr->op1] = 1;
+            counter++;
+        }
+        if (instr->op2_type == OT_REG && instr->op2 >= 0 && counted[instr->op2] == 0) { // não contamos esse
+            counted[instr->op2] = 1;
+            counter++;
+        }
+        if (instr->op3_type == OT_REG && instr->op3 >= 0 && counted[instr->op3] == 0) { // não contamos esse
+            counted[instr->op3] = 1;
+            counter++;
+        }
+        current = current->next;
+    }
+    free(counted);
+    return counter;
+}
+
 int compute_all_reg_live(instruction_entry_t *code, var_live **lst_pointer) {
-    int size = next_reg();
+    int size = count_regs(code);
     var_live *live_lst = (var_live *) calloc(size, sizeof(var_live));
 
     if (live_lst == NULL) {
@@ -65,6 +93,43 @@ int compute_all_reg_live(instruction_entry_t *code, var_live **lst_pointer) {
 
     *lst_pointer = live_lst;
     return size;
+}
+
+int compute_live_out(instruction_entry_t *code) {
+    instruction_entry_t *current, *start, *end;
+    int regs = count_regs(code);
+
+    current = code;
+    while (current != NULL) {
+        current->entry->live_out_size = regs;
+        memset(current->entry->live_out, 0, 100);
+        current = current->next;
+    }
+
+    for (int reg = 0; reg < regs; reg++) {
+        current = code;
+
+        do {
+            start = NULL;
+            end = NULL;
+
+            get_live_interval(reg, current, &start, &end);
+            if (start != NULL) {
+                while (current != start && current != NULL) {
+                    current = current->next;
+                }
+                current->entry->live_out[reg] = 1;
+                while (current != end && current != NULL) {
+                    current = current->next;
+                    current->entry->live_out[reg] = 1;
+                }  
+            } else {
+                break;
+            }
+        } while (current != NULL);
+    }
+
+    return regs;
 }
 
 void print_graph(graph_t *graph) {

@@ -18,8 +18,9 @@ Grupo: V
 #include "asp.h"
 #include "types.h"
 
-int next_reg() {
-    static int last_reg = 0;
+int last_reg = 0;
+
+int next_reg() { 
     return last_reg++;
 }
 
@@ -289,60 +290,83 @@ void generate_fun_decl(node *fun) {
             update_rsp = generate_instructionI("addI", RSP, rsp_gap, RSP);
         }
 
+        instruction_entry_t *fun_body_code = fun->nodes[0]->code;
         instruction_entry_t *start_fun_mark = generate_mark(CODE_MARK_FUN_START, 0, 0, fun_name);
         instruction_entry_t *end_fun_mark = generate_mark(CODE_MARK_FUN_END, 0, 0, fun_name);
 
         fun->code = instr_lst_join(6, start_fun_mark, instr_fun_label, update_rfp, 
-                                      update_rsp, fun->nodes[0]->code, end_fun_mark);
+                                      update_rsp, fun_body_code, end_fun_mark);
 
         fun->code = optimize_iloc_register_usage(fun->code);
 
-        instruction_entry_t *fun_body_code = fun->nodes[0]->code;
-        instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START, 0, 0, "");
-        instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START, 0, 0, "");
+        instruction_entry_t *current = fun_body_code;
+        instruction_entry_t *tail;
+        int regs = compute_live_out(fun_body_code);
+        // print_graph(graph);
+        // print_instr_lst(fun->code);
+        while (current != NULL) {
+            int need_save_regs = 0;
+            instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START, 0, 0, "");
+            instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START, 0, 0, "");
 
-        int reg = 0;
-        while (fun_body_code != NULL) 
-        {
-            if (fun_body_code->entry->reg_result == reg) 
-            {
-                int used_reg = fun_body_code->entry->op3;
-
-                instruction_entry_t *load_inst = generate_instructionI("loadAI", RFP, rsp_gap, used_reg);
-                load_inst->entry->reg_result = used_reg;
-                instruction_entry_t *store_inst = generate_instructionS("storeAI", used_reg, RFP, rsp_gap);
-                store_inst->entry->reg_result = used_reg;
-
-                store_used_reg = instr_lst_join(2, store_used_reg, store_inst);
-                load_used_reg = instr_lst_join(2, load_used_reg, load_inst);
-                rsp_gap += 4;
-                reg++;
+            // navega até a próxima finalização de passagem de argumentos de uma função
+            while (current != NULL && 
+                    (current->entry->op1 != CODE_MARK_PUTING_PARAMS_END && current->entry->op1 != OT_MARK)) {
+                current = current->next;
             }
 
-            fun_body_code = fun_body_code->next;
+            if (current == NULL) break;
+
+            // criamos a lista de instruções usadas para salvar e restaurar os registradores
+            for (int reg = 0; reg < regs; reg++) {
+                if (current->entry->live_out[reg] == 1) {
+                    need_save_regs = 1;
+                    instruction_entry_t *load_inst = generate_instructionI("loadAI", RFP, rsp_gap, reg);
+                    load_inst->entry->reg_result = reg;
+                    instruction_entry_t *store_inst = generate_instructionS("storeAI", reg, RFP, rsp_gap);
+
+                    store_used_reg = instr_lst_join(2, store_used_reg, store_inst);
+                    load_used_reg = instr_lst_join(2, load_used_reg, load_inst);
+                    rsp_gap += 4;
+                }
+            }
+            store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END, 0, 0, ""));
+            comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
+            load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END, 0, 0, ""));
+            comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
+
+            if (need_save_regs == 1) {
+                // salvamos os registradores ativos antes de ir pra função
+                tail = current->next;
+                current->next = NULL;
+                tail->previous = NULL;
+                fun_body_code = instr_lst_join(3, fun_body_code, store_used_reg, tail);
+
+                // navega até voltar da função
+                while (current != NULL && 
+                        (current->entry->op1 != CODE_MARK_FUN_CALL_JUMP_END && current->entry->op1 != OT_MARK)) {
+                    current = current->next;
+                }
+
+                // restauramos os registradores depois da volta da função
+                tail = current->next;
+                current->next = NULL;
+                tail->previous = NULL;
+                fun_body_code = instr_lst_join(3, fun_body_code, load_used_reg, tail);
+            }
+
+            if (current != NULL) {
+                current = current->next;
+            }
         }
-
-        store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END, 0, 0, ""));
-        comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
-
-        load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END, 0, 0, ""));
-        comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
 
         // gravamos os registradores usados no início da função
         if (update_rsp != NULL) {
-            update_rsp->next = NULL;
-            fun->nodes[0]->code->previous = NULL;
-            instr_lst_join(3, update_rsp, store_used_reg, fun->nodes[0]->code);
             update_rsp->entry->op2 = rsp_gap;
         }
-
-        if (fun_decl->fun_call_other_fun >= 0) {
-            insert_restore_reg_code(fun->nodes[0], load_used_reg);
-        }
-
-        // Podemos liberar porque fizemos cópia dela na outra função
-        instr_lst_free(load_used_reg);
     }
+    // resetamos o contador de registradores
+    last_reg = 0;
 }
 
 void generate_fun_call(node *s, node *params) {
@@ -354,7 +378,8 @@ void generate_fun_call(node *s, node *params) {
 
     instruction_entry_t *start_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_START, 0, 0, target_fun_name);
     instruction_entry_t *end_fun_call_mark = generate_mark(CODE_MARK_FUN_CALL_END, 0, 0, target_fun_name);
-    instruction_entry_t *call_jump_mark = generate_mark(CODE_MARK_FUN_CALL_JUMP, 0, 0, target_fun_name);
+    instruction_entry_t *call_jump_mark_start = generate_mark(CODE_MARK_FUN_CALL_JUMP_START, 0, 0, target_fun_name);
+    instruction_entry_t *call_jump_mark_end = generate_mark(CODE_MARK_FUN_CALL_JUMP_END, 0, 0, target_fun_name);
     instruction_entry_t *store_rsp = generate_instructionS("storeAI", RSP, RSP, 4);
     instruction_entry_t *store_rfp = generate_instructionS("storeAI", RFP, RSP, 8);
     current_fun_decl->fun_call_other_fun += 1;
@@ -379,6 +404,7 @@ void generate_fun_call(node *s, node *params) {
     // prepara o endereço de retorno que é após essas 2 instr e do jump
     int ret_reg = next_reg();
     instruction_entry_t *cal_ret_end = generate_instructionI("addI", RPC, 3, ret_reg);
+    cal_ret_end->entry->reg_result = ret_reg;
     instruction_entry_t *store_ret_end = generate_instructionS("storeAI", ret_reg, RSP, 0);
     instruction_entry_t *jump_fun = generate_jumpI(target_fun_decl->fun_label);
 
@@ -391,10 +417,10 @@ void generate_fun_call(node *s, node *params) {
     comment_instruction(jump_fun, "Salta para a função %s()", target_fun_name);
 
     s->reg_result = ret_value_reg;
-    s->code = instr_lst_join(10, start_fun_call_mark, store_rsp, store_rfp, 
-                                param_lst, call_jump_mark, cal_ret_end,
-                                store_ret_end, jump_fun, 
-                                load_return_value, end_fun_call_mark);
+    s->code = instr_lst_join(11, start_fun_call_mark, store_rsp, store_rfp, 
+                                param_lst, call_jump_mark_start, cal_ret_end,
+                                store_ret_end, jump_fun, load_return_value, 
+                                call_jump_mark_end, end_fun_call_mark);
 }
 
 void generate_for(node *s, node *s1, node *b, node *s2, node *s3) {
@@ -614,8 +640,11 @@ int print_mark(instruction_t *inst) {
     case CODE_MARK_FUN_CALL_END:
         char_counter += printf("CODE_MARK_FUN_CALL_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
-    case CODE_MARK_FUN_CALL_JUMP:
-        char_counter += printf("CODE_MARK_FUN_CALL_JUMP, p1 = %d, p2 = %d", inst->op2, inst->op3);
+    case CODE_MARK_FUN_CALL_JUMP_START:
+        char_counter += printf("CODE_MARK_FUN_CALL_JUMP_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
+    case CODE_MARK_FUN_CALL_JUMP_END:
+        char_counter += printf("CODE_MARK_FUN_CALL_JUMP_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_RET_START:
         char_counter += printf("CODE_MARK_FUN_RET_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
@@ -636,6 +665,7 @@ int print_mark(instruction_t *inst) {
         char_counter += printf("CODE_MARK_PUTING_PARAMS_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     default:
+        char_counter += printf("%d, p1 = %d, p2 = %d", inst->op1, inst->op2, inst->op3);
         break;
     }
     return char_counter;
