@@ -311,8 +311,8 @@ void generate_fun_decl(node *fun) {
         // print_instr_lst(fun->code);
         while (current != NULL) {
             int need_save_regs = 0;
-            instruction_entry_t *store_used_reg = generate_mark(CODE_MARK_SAVE_REGS_START, 0, 0, "");
-            instruction_entry_t *load_used_reg = generate_mark(CODE_MARK_LOAD_REGS_START, 0, 0, "");
+            instruction_entry_t *store_used_reg = NULL;
+            instruction_entry_t *load_used_reg = NULL;
 
             // navega até a próxima finalização de passagem de argumentos de uma função
             while (current != NULL && 
@@ -320,13 +320,7 @@ void generate_fun_decl(node *fun) {
                 current = current->next;
             }
 
-            if (current == NULL) {
-                instr_lst_free(store_used_reg);
-                store_used_reg = NULL;
-                instr_lst_free(load_used_reg);
-                load_used_reg = NULL;
-                break;
-            }
+            if (current == NULL) break;
 
             // criamos a lista de instruções usadas para salvar e restaurar os registradores
             for (int reg = 0; reg < regs; reg++) {
@@ -638,9 +632,6 @@ int print_mark(instruction_t *inst) {
     case CODE_MARK_SAVE_REGS_END:
         char_counter += printf("CODE_MARK_SAVE_REGS_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
-    case CODE_MARK_LOAD_REGS_START:
-        char_counter += printf("CODE_MARK_LOAD_REGS_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
-        break;
     case CODE_MARK_LOAD_REGS_END:
         char_counter += printf("CODE_MARK_LOAD_REGS_END p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
@@ -679,9 +670,6 @@ int print_mark(instruction_t *inst) {
         break;
     case CODE_MARK_PUTING_PARAMS_END:
         char_counter += printf("CODE_MARK_PUTING_PARAMS_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
-        break;
-    case CODE_MARK_SAVE_REGS_START:
-        char_counter += printf("CODE_MARK_SAVE_REGS_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     default:
         char_counter += printf("%d, p1 = %d, p2 = %d", inst->op1, inst->op2, inst->op3);

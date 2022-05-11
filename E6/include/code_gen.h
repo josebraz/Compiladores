@@ -20,7 +20,6 @@ Grupo: V
 #define CODE_MARK_FUN_END                   2
 #define CODE_MARK_SAVE_REGS_START           3
 #define CODE_MARK_SAVE_REGS_END             4
-#define CODE_MARK_LOAD_REGS_START           5
 #define CODE_MARK_LOAD_REGS_END             6
 #define CODE_MARK_INIT_CODE_START           7
 #define CODE_MARK_INIT_CODE_END             8
