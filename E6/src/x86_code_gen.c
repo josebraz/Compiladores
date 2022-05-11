@@ -15,8 +15,6 @@ Grupo: V
 #include "types.h"
 #include "hashmap.h"
 #include "instr_lst.h"
-
-// Special ILOC regs definition
 #include "code_gen.h"
 
 #define REG_NUM 16
@@ -258,11 +256,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             args++;
         }
         return args + 2; // puting start + puting end
-    } else if (mark_type == CODE_MARK_SAVE_REGS_END || 
-               mark_type == CODE_MARK_FUN_CALL_END ||
-               mark_type == CODE_MARK_LOAD_REGS_END ||
-               mark_type == CODE_MARK_FUN_RET_START ||
-               mark_type == CODE_MARK_FUN_RET_END) 
+    } else if (mark_type == CODE_MARK_FUN_CALL_END) 
     {
         // Só consome, achoo que não vamos precisar
         return 1;
@@ -616,12 +610,3 @@ void print_instruction_parameter(int op, int op_type, char *dest) {
         }
     }
 }
-
-// regs especiais = num negativo referencia: code_gen.c (valores)
-// ver regs especiais no x86 e se tem correspondente, quais são
-
-// TODO: Mudar o nome da função
-// TODO: Agora temos o ILOC com regs otimizados
-// TODO: Mapear regs até os regs que temos no x86_64 assembly, pros regs do ILOC
-// TODO: Devolver algum código inteiro quando não for possível mapear o registrador (derramamento)
-// TODO: Colocar o "movl $0, %eax" antes de um call (pra não deixar lixo no eax)

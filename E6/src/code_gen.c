@@ -335,13 +335,11 @@ void generate_fun_decl(node *fun) {
                     rsp_gap += 4;
                 }
             }
-
-            store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END, 0, 0, ""));
-            comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
-            load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END, 0, 0, ""));
-            comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
-
+            
             if (need_save_regs == 1) {
+                comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
+                comment_instruction(load_used_reg, "Restaura o estado dos registradores usados");
+               
                 // salvamos os registradores ativos antes de ir pra função
                 tail = current->next;
                 current->next = NULL;
@@ -359,11 +357,6 @@ void generate_fun_decl(node *fun) {
                 current->next = NULL;
                 tail->previous = NULL;
                 fun_body_code = instr_lst_join(3, fun_body_code, load_used_reg, tail);
-            } else {
-                instr_lst_free(store_used_reg);
-                store_used_reg = NULL;
-                instr_lst_free(load_used_reg);
-                load_used_reg = NULL;
             }
 
             if (current != NULL) {
@@ -629,12 +622,6 @@ int print_mark(instruction_t *inst) {
     case CODE_MARK_FUN_END:
         char_counter += printf("CODE_MARK_FUN_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
-    case CODE_MARK_SAVE_REGS_END:
-        char_counter += printf("CODE_MARK_SAVE_REGS_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
-        break;
-    case CODE_MARK_LOAD_REGS_END:
-        char_counter += printf("CODE_MARK_LOAD_REGS_END p1 = %d, p2 = %d", inst->op2, inst->op3);
-        break;
     case CODE_MARK_INIT_CODE_START:
         char_counter += printf("CODE_MARK_INIT_CODE_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
@@ -652,12 +639,6 @@ int print_mark(instruction_t *inst) {
         break;
     case CODE_MARK_FUN_CALL_JUMP_END:
         char_counter += printf("CODE_MARK_FUN_CALL_JUMP_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
-        break;
-    case CODE_MARK_FUN_RET_START:
-        char_counter += printf("CODE_MARK_FUN_RET_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
-        break;
-    case CODE_MARK_FUN_RET_END:
-        char_counter += printf("CODE_MARK_FUN_RET_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
     case CODE_MARK_FUN_RETURN_VALUE_START:
         char_counter += printf("CODE_MARK_FUN_RETURN_VALUE_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
