@@ -111,7 +111,7 @@ void generate_var_load(node *n) {
     n->reg_result = next_reg();
     instruction_entry_t *store_instr = generate_instructionI("loadAI", reg, offset, n->reg_result);
     store_instr->entry->reg_result = n->reg_result;
-    strcpy(store_instr->entry->mark_property, ident);
+    store_instr->entry->mark_property = strdup(ident);
     
     comment_instruction(store_instr, "Carrega variável %s", ident);
 
@@ -134,7 +134,7 @@ void generate_var_assignment(char *ident, node *b, node *init) {
     get_var_mem_loc(ident, &reg, &offset);
     instruction_entry_t *store_instr = generate_instructionS("storeAI", init->reg_result, reg, offset);
     comment_instruction(store_instr, "Grava variável %s", ident);
-    strcpy(store_instr->entry->mark_property, ident);
+    store_instr->entry->mark_property = strdup(ident);
 
     b->code = instr_lst_join(2, init->code, store_instr);
 }
@@ -230,7 +230,7 @@ void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
 
 instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *code) {
     graph_t *graph = generate_depend_graph(code);
-    int *node_colors;
+    int *node_colors = NULL;
 
     // tenta colorir o grafo com 3 cores primeiro e vai aumentando
     int result = 0;
@@ -264,7 +264,12 @@ instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *code) {
 
         instruction_list_copy = instruction_list_copy->next;
     }
-    
+
+    free_depend_graph(graph);
+    if (node_colors != NULL) {
+        free(node_colors);
+    }
+
     return code;
 }
 
@@ -315,11 +320,17 @@ void generate_fun_decl(node *fun) {
                 current = current->next;
             }
 
-            if (current == NULL) break;
+            if (current == NULL) {
+                instr_lst_free(store_used_reg);
+                store_used_reg = NULL;
+                instr_lst_free(load_used_reg);
+                load_used_reg = NULL;
+                break;
+            }
 
             // criamos a lista de instruções usadas para salvar e restaurar os registradores
             for (int reg = 0; reg < regs; reg++) {
-                if (current->entry->live_out[reg] == 1) {
+                if (current->entry->live_out != NULL && current->entry->live_out[reg] == 1) {
                     need_save_regs = 1;
                     instruction_entry_t *load_inst = generate_instructionI("loadAI", RFP, rsp_gap, reg);
                     load_inst->entry->reg_result = reg;
@@ -330,6 +341,7 @@ void generate_fun_decl(node *fun) {
                     rsp_gap += 4;
                 }
             }
+
             store_used_reg = instr_lst_join(2, store_used_reg, generate_mark(CODE_MARK_SAVE_REGS_END, 0, 0, ""));
             comment_instruction(store_used_reg, "Salva o estado dos registradores usados na função");
             load_used_reg = instr_lst_join(2, load_used_reg, generate_mark(CODE_MARK_LOAD_REGS_END, 0, 0, ""));
@@ -353,6 +365,11 @@ void generate_fun_decl(node *fun) {
                 current->next = NULL;
                 tail->previous = NULL;
                 fun_body_code = instr_lst_join(3, fun_body_code, load_used_reg, tail);
+            } else {
+                instr_lst_free(store_used_reg);
+                store_used_reg = NULL;
+                instr_lst_free(load_used_reg);
+                load_used_reg = NULL;
             }
 
             if (current != NULL) {
@@ -473,16 +490,11 @@ void generate_if(node *b, node *e, node *b_true, node *b_false) {
     int label_end = next_label();
     
     instruction_entry_t *instr_true_label = generate_label_instruction(label_true);
-    instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
-    instruction_entry_t *jump_end = generate_jumpI(label_end);
-
     comment_instruction(instr_true_label, "Label true do if");
-    comment_instruction(instr_end_label, "Label de final do if");
 
     if (b_false != NULL) {
         int label_false = next_label();
         instruction_entry_t *instr_false_label = generate_label_instruction(label_false);
-
         comment_instruction(instr_false_label, "Label false do if");
 
         bool_lst_remenda(e->true_list, label_true);
@@ -490,10 +502,14 @@ void generate_if(node *b, node *e, node *b_true, node *b_false) {
 
         if (instr_lst_end_with_code(b_true->code, "jump") == 1) {
             // já tem um salto, nao precisa do outro
-            b->code = instr_lst_join(6, e->code, instr_true_label, 
+            b->code = instr_lst_join(5, e->code, instr_true_label, 
                                         b_true->code, instr_false_label, 
-                                        b_false->code, instr_end_label);
+                                        b_false->code);
         } else {
+            instruction_entry_t *jump_end = generate_jumpI(label_end);
+            instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
+            comment_instruction(instr_end_label, "Label de final do if");
+
             b->code = instr_lst_join(7, e->code, instr_true_label, 
                                         b_true->code, jump_end, instr_false_label, 
                                         b_false->code, instr_end_label);
@@ -502,6 +518,9 @@ void generate_if(node *b, node *e, node *b_true, node *b_false) {
     } else {
         bool_lst_remenda(e->true_list, label_true);
         bool_lst_remenda(e->false_list, label_end);
+
+        instruction_entry_t *instr_end_label = generate_label_instruction(label_end);
+        comment_instruction(instr_end_label, "Label de final do if");
 
         b->code = instr_lst_join(4, e->code, instr_true_label, b_true->code, instr_end_label);
     }
@@ -616,9 +635,6 @@ int print_mark(instruction_t *inst) {
     case CODE_MARK_FUN_END:
         char_counter += printf("CODE_MARK_FUN_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
-    case CODE_MARK_SAVE_REGS_START:
-        char_counter += printf("CODE_MARK_SAVE_REGS_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
-        break;
     case CODE_MARK_SAVE_REGS_END:
         char_counter += printf("CODE_MARK_SAVE_REGS_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
@@ -664,6 +680,9 @@ int print_mark(instruction_t *inst) {
     case CODE_MARK_PUTING_PARAMS_END:
         char_counter += printf("CODE_MARK_PUTING_PARAMS_END, p1 = %d, p2 = %d", inst->op2, inst->op3);
         break;
+    case CODE_MARK_SAVE_REGS_START:
+        char_counter += printf("CODE_MARK_SAVE_REGS_START, p1 = %d, p2 = %d", inst->op2, inst->op3);
+        break;
     default:
         char_counter += printf("%d, p1 = %d, p2 = %d", inst->op1, inst->op2, inst->op3);
         break;
@@ -708,7 +727,7 @@ void print_instruction(instruction_t *inst) {
             char_counter += print_instr_param(inst->op3, inst->op3_type);
         }
     }
-    if (strlen(inst->comment) > 0) {
+    if (inst->comment != NULL) {
         for (int i = 0; i < 30 - char_counter; i++) {
             printf(" ");
         }
@@ -735,134 +754,110 @@ void get_var_mem_loc(char *ident, int *reg, int *offset) {
 void comment_instruction(instruction_entry_t *entry, char *message, ...) {
     va_list argptr;
     va_start(argptr, message);
+    entry->entry->comment = (char *) calloc(100, sizeof(char));
     vsprintf(entry->entry->comment, message, argptr);
     va_end(argptr);
 }
 
-instruction_entry_t *generate_label_instruction(int label) {
+instruction_t *generate_empty_instruction() {
     instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    strcpy(instr->code, "\0");
     instr->lazy = 0;
     instr->reg_result = -1;
-    instr->op1_type = OT_LABEL;
-    instr->op1 = label;
+    instr->live_out_size = 0;
+    instr->live_out = NULL;
+    instr->op1_type = OT_DISABLED;
+    instr->op1 = EMPTY;
     instr->op2_type = OT_DISABLED;
     instr->op2 = EMPTY;
     instr->op3_type = OT_DISABLED;
     instr->op3 = EMPTY;
-    strcpy(instr->comment, "\0");
-    strcpy(instr->mark_property, "\0");
+    instr->comment = NULL;
+    instr->mark_property = NULL;
+    return instr;
+}
+
+instruction_entry_t *generate_label_instruction(int label) {
+    instruction_t *instr = generate_empty_instruction();
+    instr->op1_type = OT_LABEL;
+    instr->op1 = label;
     return instr_lst_create_new(instr);
 }
 
 instruction_entry_t *generate_instructionB(int reg, int label1, int label2) {
-    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    instruction_t *instr = generate_empty_instruction();
     strcpy(instr->code, "cbr");
-    instr->lazy = 0;
-    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg;
     instr->op2_type = OT_LABEL;
     instr->op2 = label1;
     instr->op3_type = OT_LABEL;
     instr->op3 = label2;
-    strcpy(instr->comment, "\0");
-    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
 instruction_entry_t *generate_instruction(char *code, int reg1, int reg2, int reg3) {
-    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    instruction_t *instr = generate_empty_instruction();
     strcpy(instr->code, code);
-    instr->lazy = 0;
-    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg1;
     instr->op2_type = OT_REG;
     instr->op2 = reg2;
     instr->op3_type = OT_REG;
     instr->op3 = reg3;
-    strcpy(instr->comment, "\0");
-    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
 instruction_entry_t *generate_instructionI(char *code, int reg1, int value, int reg3) {
-    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    instruction_t *instr = generate_empty_instruction();
     strcpy(instr->code, code);
-    instr->lazy = 0;
-    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg1;
     instr->op2_type = OT_IMED;
     instr->op2 = value;
     instr->op3_type = OT_REG;
     instr->op3 = reg3;
-    strcpy(instr->comment, "\0");
-    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
 instruction_entry_t *generate_instructionS(char *code, int reg1, int value, int reg3) {
-    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    instruction_t *instr = generate_empty_instruction();
     strcpy(instr->code, code);
-    instr->lazy = 0;
-    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg1;
     instr->op2_type = OT_REG;
     instr->op2 = value;
     instr->op3_type = OT_IMED;
     instr->op3 = reg3;
-    strcpy(instr->comment, "\0");
-    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
 instruction_entry_t *generate_jump(int reg) {
-    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    instruction_t *instr = generate_empty_instruction();
     strcpy(instr->code, "jump");
-    instr->lazy = 0;
-    instr->reg_result = -1;
     instr->op1_type = OT_REG;
     instr->op1 = reg;
-    instr->op2_type = OT_DISABLED;
-    instr->op2 = EMPTY;
-    instr->op3_type = OT_DISABLED;
-    instr->op3 = EMPTY;
-    strcpy(instr->comment, "\0");
-    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
 instruction_entry_t *generate_jumpI(int label) {
-    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    instruction_t *instr = generate_empty_instruction();
     strcpy(instr->code, "jumpI");
-    instr->lazy = 0;
-    instr->reg_result = -1;
     instr->op1_type = OT_LABEL;
     instr->op1 = label;
-    instr->op2_type = OT_DISABLED;
-    instr->op2 = EMPTY;
-    instr->op3_type = OT_DISABLED;
-    instr->op3 = EMPTY;
-    strcpy(instr->comment, "\0");
-    strcpy(instr->mark_property, "\0");
     return instr_lst_create_new(instr);
 }
 
 instruction_entry_t *generate_mark(int type, int p1, int p2, char *param) {
-    instruction_t *instr = (instruction_t*) malloc(sizeof(instruction_t));
+    instruction_t *instr = generate_empty_instruction();
     strcpy(instr->code, "");
-    instr->lazy = 0;
-    instr->reg_result = -1;
     instr->op1_type = OT_MARK;
     instr->op1 = type;
     instr->op2_type = OT_MARK;
     instr->op2 = p1;
     instr->op3_type = OT_MARK;
     instr->op3 = p2;
-    strcpy(instr->comment, "\0");
-    strcpy(instr->mark_property, param);
+    instr->mark_property = strdup(param);
     return instr_lst_create_new(instr);
 }
 

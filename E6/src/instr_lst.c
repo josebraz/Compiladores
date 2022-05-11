@@ -29,13 +29,29 @@ int instr_lst_count(instruction_entry_t *list) {
     return counter;
 }
 
+void free_instruction(instruction_t *entry) {
+    if (entry->live_out != NULL) {
+        free(entry->live_out);
+        entry->live_out = NULL;
+    }
+    if (entry->mark_property != NULL) {
+        free(entry->mark_property);
+        entry->mark_property = NULL;
+    }
+    if (entry->comment != NULL) {
+        free(entry->comment);
+        entry->comment = NULL;
+    }
+    free(entry);
+}
+
 void instr_lst_free(instruction_entry_t *head) {
     instruction_entry_t *temp;
     instruction_entry_t *list = head;
     
     while (list->next != NULL) {
         temp = list->next;
-        free(list->entry);
+        free_instruction(list->entry);
         free(list);
         list = temp;
     }
@@ -174,7 +190,7 @@ instruction_entry_t *instr_lst_remove(instruction_entry_t *inst) {
         current_instruction_next->previous = inst->previous;
     }
 
-    free(inst->entry);
+    free_instruction(inst->entry);
     free(inst);
 
     return current_instruction_next;

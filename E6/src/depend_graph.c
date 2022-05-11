@@ -102,7 +102,7 @@ int compute_live_out(instruction_entry_t *code) {
     current = code;
     while (current != NULL) {
         current->entry->live_out_size = regs;
-        memset(current->entry->live_out, 0, 100);
+        current->entry->live_out = (char *) calloc(regs, sizeof(char));
         current = current->next;
     }
 
@@ -151,7 +151,7 @@ void free_depend_graph(graph_t *graph) {
     for (int i = 0; i < graph->size; i++) {
         free(graph->edges[i]);
     }
-
+    free(graph->edges);
     free(graph);
 }
 

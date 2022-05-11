@@ -31,6 +31,8 @@ typedef struct __graph {
 
 int compute_all_reg_live(instruction_entry_t *code, var_live **lst_pointer);
 
+void free_depend_graph(graph_t *graph);
+
 int compute_live_out(instruction_entry_t *code);
 
 /**
