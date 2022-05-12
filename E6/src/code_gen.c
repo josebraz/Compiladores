@@ -304,7 +304,7 @@ void generate_fun_decl(node *fun) {
 
                 // navega até voltar da função
                 while (current != NULL && 
-                        (current->entry->op1 != CODE_MARK_FUN_CALL_JUMP_END && current->entry->op1 != OT_MARK)) {
+                        (current->entry->op1 != CODE_MARK_FUN_CALL_JUMP_END && current->entry->op1_type != OT_MARK)) {
                     current = current->next;
                 }
 

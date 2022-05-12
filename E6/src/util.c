@@ -89,6 +89,7 @@ void generate_dot(void *arvore) {
 extern void exporta(void *arvore) {
     if (arvore != NULL) {
         instruction_entry_t *code = ((node*) arvore)->code;
+        print_instr_lst(code);
         code = instr_lst_remove_mark_interval(code, CODE_MARK_INIT_CODE_START, CODE_MARK_INIT_CODE_END);
         ((node*) arvore)->code = code;
 
