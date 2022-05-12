@@ -237,7 +237,7 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         if (store_inst->op1 != 0) {
             // se o valor de retorno já está no eax não precisamos colocar
             char asm_op1[10];
-            print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+            print_instruction_parameter(store_inst->op1, store_inst->op1_type, asm_op1);
             printf("\tmovl\t%s, %%eax\n", asm_op1);
         }
         return 2;
@@ -351,29 +351,45 @@ int print_mem_instruction(instruction_entry_t *instruction_lst) {
         if (next != NULL && ((next->op1 == instruction->reg_result && next->op1_type == OT_REG) || 
             (next->op2 == instruction->reg_result && next->op2_type == OT_REG))) 
         {
-            // foi feito um loadI para usar o valor direto na 
-            // próxima instrução, vamos tentar converter a próxima
-            // usando esse valor imediato
-            instruction_t *next_copy = (instruction_t*) malloc(sizeof(instruction_t));
-            *next_copy = *next;
-            if (next->op1 == instruction->reg_result) {
-                next_copy->op1_type = OT_IMED;
-                next_copy->op1 = imediate_value;
-            } else {
-                next_copy->op2_type = OT_IMED;
-                next_copy->op2 = imediate_value;
+            // verificamos se o valor salvo no registrador não é usado em nenhum outro lugar
+            instruction_entry_t *temp = instruction_lst->next;
+            int uses = 0; // tem que ter no máximo 1 uso
+            while (temp != NULL) {
+                if ((temp->entry->op1 == instruction->reg_result && temp->entry->op1_type == OT_REG) || 
+                    (temp->entry->op2 == instruction->reg_result && temp->entry->op2_type == OT_REG)) {
+                        uses++;
+                }
+                if (temp->entry->reg_result == instruction->reg_result) {
+                    break;
+                }
+                temp = temp->next;
             }
-            instruction_entry_t *next_copy_lst = instr_lst_create_new(next_copy);
-            next_copy_lst->next = instruction_lst->next->next;
 
-            int result = print_assembly_instruction(next_copy_lst);
-            free(next_copy);
-            free(next_copy_lst);
+            if (uses == 1) {
+                // foi feito um loadI para usar o valor direto na 
+                // próxima instrução, vamos tentar converter a próxima
+                // usando esse valor imediato
+                instruction_t *next_copy = (instruction_t*) malloc(sizeof(instruction_t));
+                *next_copy = *next;
+                if (next->op1 == instruction->reg_result) {
+                    next_copy->op1_type = OT_IMED;
+                    next_copy->op1 = imediate_value;
+                } else {
+                    next_copy->op2_type = OT_IMED;
+                    next_copy->op2 = imediate_value;
+                }
+                instruction_entry_t *next_copy_lst = instr_lst_create_new(next_copy);
+                next_copy_lst->next = instruction_lst->next->next;
 
-            if (result >= 1) {
-                // conseguimos converter a próxima, não precisamos converter
-                // esse loadI já que em asm isso é uma instrução apenas, então pulamos (+1)
-                return result + 1;
+                int result = print_assembly_instruction(next_copy_lst);
+                free(next_copy);
+                free(next_copy_lst);
+
+                if (result >= 1) {
+                    // conseguimos converter a próxima, não precisamos converter
+                    // esse loadI já que em asm isso é uma instrução apenas, então pulamos (+1)
+                    return result + 1;
+                }
             }
         }
         suffix = get_correct_suffix(instruction->op2, instruction->op2_type, instruction->op3, instruction->op3_type);

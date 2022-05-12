@@ -49,7 +49,7 @@ void instr_lst_free(instruction_entry_t *head) {
     instruction_entry_t *temp;
     instruction_entry_t *list = head;
     
-    while (list->next != NULL) {
+    while (list != NULL) {
         temp = list->next;
         free_instruction(list->entry);
         free(list);
@@ -241,3 +241,27 @@ int instr_lst_end_with_code(instruction_entry_t *inst, char *code) {
         return 0;
     }
 }
+
+// instruction_entry_t *instr_lst_remove(instruction_entry_t *code) {
+//     instruction_entry_t *previous = code->previous;
+//     instruction_entry_t *next = code->next;
+//     if (previous != NULL) {
+//         previous->next = next;
+//     }
+//     if (next != NULL) {
+//         next->previous = previous;
+//     }
+
+//     code->next = NULL;
+//     code->previous = NULL;
+//     instr_lst_free(code);
+
+//     if (previous == NULL) {
+//         return next;
+//     } else {
+//         while (previous->next != NULL) {
+//             previous = previous->next;
+//         }
+//         return previous;
+//     }
+// }

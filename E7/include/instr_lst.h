@@ -26,6 +26,8 @@ instruction_entry_t *instr_lst_add_next(instruction_entry_t *entry, instruction_
 
 instruction_entry_t *instr_lst_add_previous(instruction_entry_t *entry, instruction_t *new_inst);
 
+instruction_entry_t *instr_lst_remove(instruction_entry_t *code);
+
 int instr_lst_contain(instruction_entry_t *start, instruction_entry_t *end, instruction_t *find);
 
 instruction_entry_t *instr_lst_remove_mark_interval(
