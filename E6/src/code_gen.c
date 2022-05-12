@@ -183,53 +183,9 @@ void generate_fun_return(node *s, node *e) {
     }
 }
 
-void insert_restore_reg_code(node *n, instruction_entry_t *restore_code) {
-    instruction_entry_t *current = n->code;
-    while (current != NULL) {
-        while (current != NULL && 
-                (current->entry->op1 != CODE_MARK_FUN_CALL_END && current->entry->op1 != OT_MARK)) {
-            current = current->next;
-        }
-        if (current != NULL) {
-            instruction_entry_t *copy = instr_lst_copy(restore_code);
-            int result_reg = current->previous->entry->op3; // loadAI rsp, 12 => result_reg
-            // não restaura o registrador usado para o retorno da funçao
-            instruction_entry_t *temp = copy;
-            while (temp != NULL) {
-                if (temp->entry->op3 == result_reg && temp->entry->op3_type == OT_REG) {
-                    if (temp->previous != NULL) {
-                        temp->previous->next = temp->next;
-                    }
-                    if (temp->next != NULL) {
-                        temp->next->previous = temp->previous;
-                    }
-
-                    if (temp == copy) { // removemos a primeira instrução
-                        copy = copy->next;
-                    }
-                    free(temp->entry);
-                    free(temp);
-                    break;
-                }
-                temp = temp->next;
-            }
-
-            // colocamos a restauração dos regs depois do store do resultado
-            if (copy != NULL) {
-                instruction_entry_t *previous = current->previous;
-                if (previous != NULL) {
-                    previous->next = copy;
-                    copy->previous = previous;
-                }
-                instr_lst_join(2, copy, current);
-            }
-            current = current->next;
-        }
-    }
-}
-
 instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *code) {
     graph_t *graph = generate_depend_graph(code);
+
     int *node_colors = NULL;
 
     // tenta colorir o grafo com 3 cores primeiro e vai aumentando

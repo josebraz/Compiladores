@@ -19,8 +19,22 @@ Grupo: V
 
 #define REG_NUM 16
 #define REG_EFE 11 // registrador usado para os calculos intermediários
+#define REG_EFE_2 10 // registrador usado para os calculos intermediários
+#define REG_EFE_3 9 // registrador usado para os calculos intermediários
 #define STACK_OFFSET 12
 
+#define EAX_REG 0
+#define EBX_REG 1
+#define ECX_REG 2
+#define EDX_REG 3
+#define R8_REG  4
+#define R9_REG  5
+#define R10_REG 6
+#define R11_REG 7
+#define R12_REG 8
+#define R13_REG 9
+#define R14_REG 10
+#define R15_REG 11
 
 /*
 Special x86_64 regs ref: https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
@@ -197,20 +211,15 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             printf("\tleave\n");
             printf("\t.cfi_def_cfa 7, 8\n");
             printf("\tret\n");
-            if (strcmp(fun_name, "main") == 0) {
-                // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
-                // halt
-                return 2;
-            } else {
-                // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
-                // loadAI rfp, 4 => r0           // Carrega ultimo RSP
-                // i2i r0 => rsp
-                // loadAI rfp, 8 => r0           // Carrega ultimo RFP
-                // i2i r0 => rfp
-                // loadAI rfp, 0 => r0           // Carrega end de retorno
-                // jump => r0
-                return 7;
-            }
+        } else {
+            printf("\tpopq\t%%rbp\n");
+            printf("\t.cfi_def_cfa 7, 8\n");
+            printf("\tret\n");
+        }
+        if (strcmp(fun_name, "main") == 0) {
+            // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
+            // halt
+            return 2;
         } else {
             // MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
             // loadAI rfp, 4 => r0           // Carrega ultimo RSP
@@ -219,9 +228,6 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
             // i2i r0 => rfp
             // loadAI rfp, 0 => r0           // Carrega end de retorno
             // jump => r0
-            printf("\tpopq\t%%rbp\n");
-            printf("\t.cfi_def_cfa 7, 8\n");
-            printf("\tret\n");
             return 7;
         }
     } else if (mark_type == CODE_MARK_FUN_RETURN_VALUE_START) {
@@ -409,11 +415,7 @@ int print_compare_branch_instruction(instruction_entry_t *instruction_lst) {
         char asm_op1[10], asm_op2[10];
         print_instruction_parameter(cmp_instr->op1, cmp_instr->op1_type, asm_op1);
         print_instruction_parameter(cmp_instr->op2, cmp_instr->op2_type, asm_op2);
-        if (cmp_instr->op2_type == OT_IMED) {
-            printf("\tcmpl\t%s, %s\n", asm_op2, asm_op1);
-        } else {
-            printf("\tcmpl\t%s, %s\n", asm_op1, asm_op2);
-        }
+        printf("\tcmpl\t%s, %s\n", asm_op2, asm_op1);
 
         // em x86 nos pulamos caso negativo e seguimos a execução caso 
         // positivo, por isso tem que negar o jump com relação ao teste
@@ -454,24 +456,87 @@ int print_compare_branch_instruction(instruction_entry_t *instruction_lst) {
     return 0;
 }
 
+int print_div_mult_instruction(instruction_entry_t *instruction_lst) {
+    instruction_t *instruction = instruction_lst->entry;
+    char code[10];
+    if (strncmp(instruction->code, "div", 3) == 0) {
+        strcpy(code, "idiv");
+    } else if (strncmp(instruction->code, "mult", 4) == 0) {
+        strcpy(code, "imul");
+    } else {
+        return 0;
+    }
+
+    // registradores usados: eax/ebx = eax e sobra edx
+    char asm_op1[10], asm_op2[10];
+
+    if (instruction->op1 != EAX_REG && instruction->op1_type == OT_REG) {
+        // salva o eax no REG_EFE
+        print_instruction_parameter(REG_EFE, OT_REG, asm_op2);
+        print_instruction_parameter(EAX_REG, OT_REG, asm_op1);
+        printf("\tmovl\t%s, %s\n", asm_op1, asm_op2);
+        // carrega o eax com o valor do op1
+        print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
+        print_instruction_parameter(EAX_REG, OT_REG, asm_op2);
+        printf("\tmovl\t%s, %s\n", asm_op1, asm_op2);
+    }
+
+    // não precisavamos salvar/restaurar um registrador que vai ser escrito
+    if (instruction->op3 != EDX_REG) { 
+        // salva o edx no REG_EFE_2
+        print_instruction_parameter(REG_EFE_2, OT_REG, asm_op2);
+        print_instruction_parameter(EDX_REG, OT_REG, asm_op1);
+        printf("\tmovl\t%s, %s\n", asm_op1, asm_op2);
+    }
+
+    int reg_operand;
+    if (instruction->op2_type == OT_IMED) {
+        // divisão não suporta valor imediato, movemos para o temporário
+        print_instruction_parameter(REG_EFE_3, OT_REG, asm_op2);
+        print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op1);
+        printf("\tmovl\t%s, %s\n", asm_op1, asm_op2);
+        reg_operand = REG_EFE_3;
+    } else if (instruction->op2_type == OT_REG) {
+        reg_operand = instruction->op2;
+    } else {
+        return 0;
+    }
+
+    printf("\tcltd\n"); // converte o eax para edx:eax
+    print_instruction_parameter(reg_operand, OT_REG, asm_op1);
+    printf("\t%sl\t%s\n", code, asm_op1);
+
+    if (instruction->op3 != EDX_REG) { 
+        // restaura o edx com o REG_EFE_3
+        print_instruction_parameter(REG_EFE_2, OT_REG, asm_op2);
+        print_instruction_parameter(EDX_REG, OT_REG, asm_op1);
+        printf("\tmovl\t%s, %s\n", asm_op2, asm_op1);
+    }
+
+    if (instruction->op3 != EAX_REG) {
+        // move o resultado do eax para o precisa e restaura o eax
+        print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op2);
+        print_instruction_parameter(EAX_REG, OT_REG, asm_op1);
+        printf("\tmovl\t%s, %s\n", asm_op1, asm_op2);
+        print_instruction_parameter(REG_EFE, OT_REG, asm_op2);
+        print_instruction_parameter(EAX_REG, OT_REG, asm_op1);
+        printf("\tmovl\t%s, %s\n", asm_op2, asm_op1);
+    }
+    
+    return 1; // em ILOC isso tudo aqui é uma instrução kkk
+}
+
 int print_general_instruction(instruction_entry_t *instruction_lst) {
     instruction_t *instruction = instruction_lst->entry;
 
-    char asm_code[10], asm_op1[10], asm_op2[10], asm_op3[10];
+    char asm_code[10], asm_op1[10], asm_op2[10];
     int is_comutative = 0;
-    int is_three_op = 0;
 
     if (strncmp(instruction->code, "add", 3) == 0) {
         strcpy(asm_code, "add");
         is_comutative = 1;
     } else if (strncmp(instruction->code, "sub", 3) == 0) {
         strcpy(asm_code, "sub");
-    } else if (strncmp(instruction->code, "mult", 4) == 0) {
-        strcpy(asm_code, "imul");
-        is_comutative = 1;
-        is_three_op = 1;
-    } else if (strncmp(instruction->code, "div", 3) == 0) {
-        strcpy(asm_code, "idiv");
     } else if (strncmp(instruction->code, "and", 3) == 0) {
         strcpy(asm_code, "and");
         is_comutative = 1;
@@ -486,27 +551,12 @@ int print_general_instruction(instruction_entry_t *instruction_lst) {
     } else if (strncmp(instruction->code, "rshift", 6) == 0) {
         strcpy(asm_code, "sar");
     } else {
-        // não conhecemos essa instrução como sendo um instrução
-        // geral, deve ser outra coisa, então vamos sair...
-        return 0;
+        // não sabemos converter para essas simples, vamos tentar
+        // divisão e multiplicação que é um pouco mais complexo
+        return print_div_mult_instruction(instruction_lst);
     }
 
-    if (is_three_op == 1) {
-        // o x86 suporta essa instrução como uma instrução de 3 operandos, é tivial
-        print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
-        print_instruction_parameter(instruction->op2, instruction->op2_type, asm_op2);
-        print_instruction_parameter(instruction->op3, instruction->op3_type, asm_op3);
-
-        char suffix = get_correct_suffix(instruction->op1, instruction->op1_type, instruction->op2, instruction->op2_type);
-        
-        if (instruction->op2_type == OT_IMED) {
-            printf("\t%s%c\t%s, %s, %s\n", asm_code, suffix, asm_op2, asm_op1, asm_op3);
-        } else {
-            printf("\t%s%c\t%s, %s, %s\n", asm_code, suffix, asm_op1, asm_op2, asm_op3);
-        }
-    
-        return 1;
-    } else if (instruction->op1 == instruction->op3) {
+    if (instruction->op1 == instruction->op3) {
         // essas operações não importa a ordem, então da pra executar
         // em uma instrução apenas
         print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);
