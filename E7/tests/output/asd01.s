@@ -1,4 +1,5 @@
 #ORIGINAL
+#// MARK: CODE_MARK_FUN_START, p1 = 0, p2 = 0
 #L0:                           // Declaração da função main
 #i2i rsp => rfp
 #loadI 4 => r1
@@ -12,16 +13,22 @@
 #add r4, r7 => r8
 #storeAI r8 => rfp, 16         // Grava variável a
 #loadAI rfp, 16 => r9          // Início do retorno
+#// MARK: CODE_MARK_FUN_RETURN_VALUE_START, p1 = 0, p2 = 0
 #storeAI r9 => rfp, 12         // Escreve o valor de retorno na pilha
+#// MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
 #halt                          // Termina o programa
-
+#// MARK: CODE_MARK_FUN_END, p1 = 0, p2 = 0
 #OPTMIZED
+#// MARK: CODE_MARK_FUN_START, p1 = 0, p2 = 0
 #L0:                           // Declaração da função main
 #i2i rsp => rfp
 #loadI 20 => r0
 #storeAI r0 => rfp, 16         // Grava variável a
+#// MARK: CODE_MARK_FUN_RETURN_VALUE_START, p1 = 0, p2 = 0
 #storeAI r0 => rfp, 12         // Escreve o valor de retorno na pilha
+#// MARK: CODE_MARK_FUN_RETURN_VALUE_END, p1 = 0, p2 = 0
 #halt                          // Termina o programa
+#// MARK: CODE_MARK_FUN_END, p1 = 0, p2 = 0
 	.globl	main
 	.type	main, @function
 main:

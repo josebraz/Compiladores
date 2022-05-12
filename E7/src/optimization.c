@@ -65,6 +65,31 @@ instruction_entry_t *optimize_with_windows(instruction_entry_t *code, int *updat
         instruction_t *current_instr = current->entry;
 
         ///////////////////////////////////////////////
+        // Otimização de 1 instrução
+        // move o conteúdo entre o mesmo registrador
+        if (strcmp(current_instr->code, "i2i") == 0 && current_instr->op1 == current_instr->op3 ) {
+            current = instr_lst_remove(current);
+            *update = 1;
+            continue;
+        }
+
+        if ((strcmp(current_instr->code, "add") == 0 || strcmp(current_instr->code, "sub") == 0) && 
+                ((current_instr->op1 == 0 && current_instr->op1_type == OT_IMED) || 
+                 (current_instr->op2 == 0 && current_instr->op2_type == OT_IMED))) {
+            current = instr_lst_remove(current);
+            *update = 1;
+            continue;
+        }
+
+        if ((strcmp(current_instr->code, "mult") == 0 || strcmp(current_instr->code, "div") == 0) && 
+                ((current_instr->op1 == 1 && current_instr->op1_type == OT_IMED) || 
+                 (current_instr->op2 == 1 && current_instr->op2_type == OT_IMED))) {
+            current = instr_lst_remove(current);
+            *update = 1;
+            continue;
+        }
+
+        ///////////////////////////////////////////////
         // Otimização de 2 instruções
         instruction_t *next_instr = NULL;
         if (current->next != NULL) {
