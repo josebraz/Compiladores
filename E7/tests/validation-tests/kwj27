@@ -1,0 +1,16 @@
+int mult (int z)
+{
+  int x;
+  x = z*z;
+  return x;
+}
+
+int main()
+{
+  int y;
+  int x;
+  y = 3;
+  x = mult(y);
+  x = x + y;
+  return x;
+}

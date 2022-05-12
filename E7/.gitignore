@@ -1,0 +1,6 @@
+/.vscode
+doc/*
+obj/*
+src/*.yy.c
+include/*.tab.*
+etapa7
