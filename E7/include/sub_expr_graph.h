@@ -15,13 +15,19 @@ typedef struct sub_expr_node {
     int reg;             // o número que representa o temporário 
     int version;         // a versão do temporário
     int neigh_size;      // quantos vizinho esse nodo tem
-    struct sub_expr_node *neigh[100];
+    int neigh_capacity;
+    struct sub_expr_node **neigh;
 } sub_expr_node;
 
 typedef struct sub_expr_graph {
-    sub_expr_node *nodes[100];
+    sub_expr_node **nodes;
     int size;
+    int capacity;
 } sub_expr_graph;
+
+sub_expr_graph *sub_expr_graph_init_graph();
+
+sub_expr_node *sub_expr_graph_init_node();
 
 void print_sub_expr_graph(sub_expr_graph *graph);
 
