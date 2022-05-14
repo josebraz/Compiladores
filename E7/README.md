@@ -1,3 +1,12 @@
+# Etapa 7
+
+## Nomes:
+- José Braz
+- Octavio Arruda
+
+## Grupo: 
+- V
+
 ### Otimizações desenvolvidas
 
 * Cálculo de expressões constantes em tempo de compilação
