@@ -251,7 +251,8 @@ int print_mark_instruction(instruction_entry_t *instruction_lst) {
         char asm_op1[10], asm_op2[10];
         int args = 0;
         instruction_entry_t *current = instruction_lst->next;
-        while (current != NULL && current->entry->op1 != CODE_MARK_PUTING_PARAMS_END) {
+        while (current != NULL && 
+                (current->entry->op1 != CODE_MARK_PUTING_PARAMS_END || current->entry->op1_type != OT_MARK)) {
             instruction = current->entry;
             int offset = -instruction->op3 + STACK_OFFSET - 16; 
             print_instruction_parameter(instruction->op1, instruction->op1_type, asm_op1);

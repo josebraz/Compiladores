@@ -38,6 +38,10 @@ instruction_entry_t *instr_lst_remove_mark_interval(
 
 int instr_lst_end_with_code(instruction_entry_t *inst, char *code);
 
+int instr_lst_count_regs(instruction_entry_t *code);
+
+void instr_lst_change_reg(instruction_entry_t *code, int original_reg, int new_reg);
+
 #endif
 
 

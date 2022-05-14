@@ -14,10 +14,15 @@ Grupo: V
 #include "instr_lst.h"
 #include "semantic.h"
 #include "depend_graph.h"
+#include "sub_expr_graph.h"
 #include "asp.h"
 #include "types.h"
 
 int optimization_mode = OPT_DISABLED;
+
+int get_optimization_flag() {
+    return optimization_mode;
+}
 
 instruction_entry_t *optimize_with_windows(instruction_entry_t *code, int *update);
 
@@ -38,23 +43,26 @@ instruction_entry_t *optimize_code(instruction_entry_t *code) {
         code = optimize_with_windows(code, &update);
     } while (update == 1);
 
+    do {
+        update = 0;
+        code = sub_expr_graph_optimize(code, &update);
+        // print_sub_expr_graph(graph);
+    } while (update == 1);
+
     return code;
 }
 
 instruction_entry_t *optimize_function_code(instruction_entry_t *code) {
-    printf("#ORIGINAL\n");
-    print_instr_lst(code);
+    // printf("#ORIGINAL\n");
+    // print_instr_lst(code);
 
     code = optimize_code(code);
+
+    // printf("#OPTMIZED\n");
+    // print_instr_lst(code);
+
 
     code = optimize_iloc_register_usage(code);
-
-    // repetimos as otimizações porque tem algumas que funcionam melhor
-    // com os registradores otimizados
-    code = optimize_code(code);
-
-    printf("#OPTMIZED\n");
-    print_instr_lst(code);
 
     return code;
 }

@@ -53,29 +53,8 @@ int get_live_interval(int reg, instruction_entry_t *instr, instruction_entry_t *
     return f_start != NULL && f_end != NULL;
 }
 
-int count_regs(instruction_entry_t *code) {
-    int counter = -1;
-
-    instruction_entry_t *current = code;
-    while (current != NULL) {
-        instruction_t *instr = current->entry;
-        if (instr->op1_type == OT_REG && instr->op1 >= 0 && instr->op1 > counter) { // não contamos esse
-            counter = instr->op1;
-        }
-        if (instr->op2_type == OT_REG && instr->op2 >= 0 && instr->op2 > counter) { // não contamos esse
-            counter = instr->op2;
-        }
-        if (instr->op3_type == OT_REG && instr->op3 >= 0 && instr->op3 > counter) { // não contamos esse
-            counter = instr->op3;
-        }
-        current = current->next;
-    }
-
-    return counter + 1; // pra contar a partir do r0
-}
-
 int compute_all_reg_live(instruction_entry_t *code, var_live **lst_pointer) {
-    int size = count_regs(code);
+    int size = instr_lst_count_regs(code);
     var_live *live_lst = (var_live *) calloc(size, sizeof(var_live));
 
     if (live_lst == NULL) {
@@ -93,7 +72,7 @@ int compute_all_reg_live(instruction_entry_t *code, var_live **lst_pointer) {
 
 int compute_live_out(instruction_entry_t *code) {
     instruction_entry_t *current, *start, *end;
-    int regs = count_regs(code);
+    int regs = instr_lst_count_regs(code);
 
     current = code;
     while (current != NULL) {

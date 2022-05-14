@@ -89,11 +89,9 @@ instruction_entry_t *generate_mark(int type, int p1, int p2, char *param);
 
 void comment_instruction(instruction_entry_t *entry, char *message, ...);
 
-void get_var_mem_loc(char *ident, int *reg, int *offset);
+hashmap_value_t *get_var_mem_loc(char *ident, int *reg, int *offset);
 
 void print_instr_lst(instruction_entry_t *entry);
-
-void print_instruction(instruction_t *new_inst);
 
 void print_instruction(instruction_t *inst);
 

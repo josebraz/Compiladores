@@ -85,6 +85,7 @@ hashmap_value_t *create_hashmap_value(
     hashmap_value_t *value = (hashmap_value_t *) malloc(sizeof(hashmap_value_t));
     value->line = get_line_number();
     value->nature = nature;
+    value->loaded_register = -1;
     value->men_size = mem_mult * size_data_type(type);
     value->type = type;
     value->args = args;

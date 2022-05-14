@@ -11,6 +11,8 @@ Grupo: V
 
 void optimization_setup(int argc, char **argv);
 
+int get_optimization_flag();
+
 instruction_entry_t *optimize_function_code(instruction_entry_t *code);
 
 instruction_entry_t *optimize_iloc_register_usage(instruction_entry_t *code);

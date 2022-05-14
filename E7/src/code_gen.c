@@ -107,16 +107,20 @@ void generate_change_signal(node *b, node *parent) {
 void generate_var_load(node *n) {
     int reg, offset;
     char *ident = (char *) n->value;
-    get_var_mem_loc(ident, &reg, &offset);
-
-    n->reg_result = next_reg();
-    instruction_entry_t *store_instr = generate_instructionI("loadAI", reg, offset, n->reg_result);
-    store_instr->entry->reg_result = n->reg_result;
-    store_instr->entry->mark_property = strdup(ident);
+    hashmap_value_t *decl = get_var_mem_loc(ident, &reg, &offset);
     
-    comment_instruction(store_instr, "Carrega variável %s", ident);
-
-    n->code = store_instr;
+    if (decl->loaded_register != -1 && get_optimization_flag() == OPT_ENABLED) {
+        // variável já foi carrega para um registrador
+        n->reg_result = decl->loaded_register;
+    } else {
+        n->reg_result = next_reg();
+        instruction_entry_t *store_instr = generate_instructionI("loadAI", reg, offset, n->reg_result);
+        store_instr->entry->reg_result = n->reg_result;
+        store_instr->entry->mark_property = strdup(ident);
+        decl->loaded_register = n->reg_result;
+        comment_instruction(store_instr, "Carrega variável %s", ident);
+        n->code = store_instr;
+    }
 }
 
 void generate_literal_load(node *n) {
@@ -127,12 +131,27 @@ void generate_literal_load(node *n) {
     n->code->entry->reg_result = n->reg_result;
 }
 
+void change_result_reg(node *n, int new_reg) {
+    int original_reg = n->reg_result;
+    if (original_reg == -1) return;
+    n->reg_result = new_reg;
+    instr_lst_change_reg(n->code, original_reg, new_reg);
+}
+
 void generate_var_assignment(char *ident, node *b, node *init) {
     if (init->mark == VAR_T) {
         generate_var_load(init);
     }
     int reg, offset;
-    get_var_mem_loc(ident, &reg, &offset);
+    hashmap_value_t *decl = get_var_mem_loc(ident, &reg, &offset);
+
+    if (get_optimization_flag() == OPT_ENABLED) {
+        if (decl->loaded_register != -1) {
+            change_result_reg(init, decl->loaded_register);
+        } else {
+            decl->loaded_register = init->reg_result;
+        }
+    }
     instruction_entry_t *store_instr = generate_instructionS("storeAI", init->reg_result, reg, offset);
     comment_instruction(store_instr, "Grava variável %s", ident);
     store_instr->entry->mark_property = strdup(ident);
@@ -226,7 +245,7 @@ void generate_fun_decl(node *fun) {
 
             // navega até a próxima finalização de passagem de argumentos de uma função
             while (current != NULL && 
-                    (current->entry->op1 != CODE_MARK_PUTING_PARAMS_END && current->entry->op1 != OT_MARK)) {
+                    (current->entry->op1 != CODE_MARK_PUTING_PARAMS_END || current->entry->op1_type != OT_MARK)) {
                 current = current->next;
             }
 
@@ -258,7 +277,7 @@ void generate_fun_decl(node *fun) {
 
                 // navega até voltar da função
                 while (current != NULL && 
-                        (current->entry->op1 != CODE_MARK_FUN_CALL_JUMP_END && current->entry->op1_type != OT_MARK)) {
+                        (current->entry->op1 != CODE_MARK_FUN_CALL_JUMP_END || current->entry->op1_type != OT_MARK)) {
                     current = current->next;
                 }
 
@@ -615,7 +634,7 @@ void print_instruction(instruction_t *inst) {
     printf("\n");
 }
 
-void get_var_mem_loc(char *ident, int *reg, int *offset) {
+hashmap_value_t *get_var_mem_loc(char *ident, int *reg, int *offset) {
     hashmap_t *scope;
     hashmap_value_t *decl = find_declaration(ident, &scope);
     if (decl == NULL || scope == NULL) {
@@ -628,6 +647,7 @@ void get_var_mem_loc(char *ident, int *reg, int *offset) {
         *reg = RFP;
         *offset = decl->men_offset + 16;
     }
+    return decl;
 }
 
 void comment_instruction(instruction_entry_t *entry, char *message, ...) {

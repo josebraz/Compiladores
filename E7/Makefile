@@ -7,11 +7,11 @@ TST := tests/
 OUT := tests/output/
 SIO := scripts/ilocsim_output/
 
-all: dirs asp.o util.o hashmap.o list.o semantic.o instr_lst.o code_gen.o bool_lst.o stack.o depend_graph.o arch_code_gen.o optimization.o parser.tab.c lex.yy.c 
+all: dirs asp.o util.o hashmap.o list.o semantic.o instr_lst.o code_gen.o bool_lst.o stack.o depend_graph.o arch_code_gen.o optimization.o sub_expr_graph.o parser.tab.c lex.yy.c 
 	gcc -c -g ${SRC}main.c -o ${OBJ}main.o -Wall
 	gcc -c -g ${INC}parser.tab.c -o ${OBJ}parser.tab.o
 	gcc -c -g ${SRC}lex.yy.c -o ${OBJ}lex.yy.o
-	gcc -o etapa7 ${OBJ}main.o ${OBJ}asp.o ${OBJ}util.o ${OBJ}hashmap.o ${OBJ}list.o ${OBJ}semantic.o ${OBJ}instr_lst.o ${OBJ}code_gen.o ${OBJ}bool_lst.o ${OBJ}stack.o ${OBJ}depend_graph.o ${OBJ}arch_code_gen.o ${OBJ}optimization.o ${OBJ}lex.yy.o ${OBJ}parser.tab.o -lfl -Wall
+	gcc -o etapa7 ${OBJ}main.o ${OBJ}asp.o ${OBJ}util.o ${OBJ}hashmap.o ${OBJ}list.o ${OBJ}semantic.o ${OBJ}instr_lst.o ${OBJ}code_gen.o ${OBJ}bool_lst.o ${OBJ}stack.o ${OBJ}depend_graph.o ${OBJ}arch_code_gen.o ${OBJ}optimization.o ${OBJ}sub_expr_graph.o ${OBJ}lex.yy.o ${OBJ}parser.tab.o -lfl -Wall
 
 parser.tab.c:
 	bison -d -v --output=${INC}parser.tab.c ${SRC}parser.y --report-file ${DOC}parser.output
@@ -54,6 +54,9 @@ arch_code_gen.o:
 
 optimization.o:
 	gcc -c -g ${SRC}optimization.c -o ${OBJ}optimization.o -I ${INC} -Wall
+
+sub_expr_graph.o:
+	gcc -c -g ${SRC}sub_expr_graph.c -o ${OBJ}sub_expr_graph.o -I ${INC} -Wall
 
 dirs: 
 	mkdir -p ${OBJ}
