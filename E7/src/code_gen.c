@@ -164,7 +164,9 @@ void generate_fun_return(node *s, node *e) {
 
     instruction_entry_t *store_result = generate_instructionS("storeAI", e->reg_result, RFP, 12);
 
-    comment_instruction(e->code, "Início do retorno");
+    if (e->code != NULL) {
+        comment_instruction(e->code, "Início do retorno");
+    }
     comment_instruction(store_result, "Escreve o valor de retorno na pilha");
 
     instruction_entry_t *fun_return_value_mark = generate_mark(CODE_MARK_FUN_RETURN_VALUE_START, 0, 0, fun_scope->label);
